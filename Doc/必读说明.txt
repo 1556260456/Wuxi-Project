@@ -1,0 +1,42 @@
+任务一：串口接收数据
+任务二：显示数据
+
+2020/03/18
+	(1)task.c  新增自检函数：void SelfCheckStatus(void)
+	(2)task.h  #define ORIGIN_X            7900     //大爪子初始X位置
+               #define ORIGIN_Y            4000     //大爪子初始Y位置
+               #define ORIGIN_Z            1700     //大爪子初始Z位置
+			   
+2020/03/24
+	(1)task.c  修改X方向移动函数    void XMoving(float x);
+	(2)task.c  新增反向制动函数     void RevStop(float err);
+	(3)task.c  新增点动函数         void DotMove(float err_x,float err_y);
+	(4)task.c  新增通讯管理函数     void DataCommunicateManage(uint8_t task_mode);
+	(5)task.c  修改Y方向移动函数    void YMoving(float y);
+	(6)task.c  新增变量
+			   uint8_t HTaskModeFlag = 0;
+			   uint8_t ReverseStop = 0;    //大行车反向停止标志位
+               int ReverseTime = 0;        //反向时间
+			   uint8_t ReverseCount = 0;   //反向操作次数
+
+			   uint8_t PointMove = 0;      //大行车点动标志位
+			   int PointMoveTime = 0;      //点动时间
+
+2020/03/25
+    (1)添加CRC.c,CRC.h
+	
+2020/04/04
+	(1)新增 LCFunc.c         直接控制底层
+	(2)新增 Manual.c         手动控制
+	(3)新增 FullAuto         全自动化
+	(4)新增 HalfAuto         半自动化
+	(5)移除 Task.c           
+
+2020/04/16
+	(1)RS485.c     新增RS485发送函数void RS485_Send_Data(void)
+	(2)usart3.c    新增串口中断中接收内容
+	(3)LCFunc.c    新增暂停函数和恢复函数 void TaskSuspend(void)    void ConExecute(void)
+	(4)main.c      新增报警功能
+
+	
+	
