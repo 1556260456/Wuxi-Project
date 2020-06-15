@@ -56,7 +56,6 @@ void SmallCarFullAutoMode(void)
 			FullAutoStep++;//进行下一步
 			X_MOVE_BIT=0;//标志位复位
 			Y_MOVE_BIT=0;//标志位复位
-			UpOrDown = 0;//0代表上半部，1代表下半部,为下面下降程序做准备
 		}
 	}
 	else if(3==FullAutoStep)//爪子开始下降去抓料
@@ -76,7 +75,6 @@ void SmallCarFullAutoMode(void)
 		{
 			FullAutoStep++;//进行下一步
 			CloseFlag = 0; //标志位复位
-			UpOrDown = 1;  //0代表上半部，1代表下半部,将爪子上抬标志位置1
 		}
 	}
 	else if(5==FullAutoStep)//执行小爪上升动作

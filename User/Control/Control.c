@@ -14,9 +14,9 @@
  *************************************************************************  
  */
 extern uint8_t start_down ;
-extern uint8_t down_time ;
+extern int down_time ;
 extern uint8_t start_up ;
-extern uint8_t up_time ;
+extern int up_time ;
 
 Task_loop_t task_tim;
 
@@ -35,7 +35,8 @@ void control_task(void)
 	task_tim.time_5ms++;
 	task_tim.time_10ms++;	
 	task_tim.time_25ms++;
-	task_tim.time_100ms++;	
+	task_tim.time_100ms++;
+  task_tim.time_200ms++;	
 	task_tim.time_1000ms++;	
 	
 
@@ -47,7 +48,13 @@ void control_task(void)
 	}
 	else if(task_tim.time_10ms >= 20)
 	{
-	  task_tim.time_10ms -= 20;
+	  
+		
+
+	}
+	else if(task_tim.time_25ms >= 50)
+	{
+	  task_tim.time_25ms -= 50;
 		if(start_down == 1)
 		{
 			down_time++;
@@ -56,11 +63,6 @@ void control_task(void)
 		{
 			up_time++;
 		}
-
-	}
-	else if(task_tim.time_25ms >= 50)
-	{
-	  task_tim.time_25ms -= 50;
 	}
 	else if(task_tim.time_100ms >= 200)
 	{
@@ -75,13 +77,13 @@ void control_task(void)
 			PointMoveTime++;
 		}
 		
-		if(CloseFlag == 1)
+		if(CloseFlag >= 0)
 		{
-			CloseDelay++;
+			CloseFlag++;
 		}
-		if(OpenFlag == 1)
+		if(OpenFlag >= 0)
 		{
-			OpenDelay++;
+			OpenFlag++;
 		}		
 		
 		if(RelayOnflag>=0)
@@ -96,13 +98,13 @@ void control_task(void)
 //	else if(task_tim.time_1000ms >= 2000)
 //	{
 //	  task_tim.time_1000ms -= 2000;
-//    if (1==Big_Claw_Up_Delay_Flag)
+//    if (1==Small_Claw_Up_Delay_Flag)
 //    {
-//        Big_Claw_Up_Delay = Big_Claw_Up_Delay+1;
+//       Small_Claw_Up_Delay = Small_Claw_Up_Delay+1;
 //    }
-//    if (1==Big_Claw_Up_Delay_Pool_Flag)
+//    if (1==Small_Claw_Up_Delay_Pool_Flag)
 //    {
-//        Big_Claw_Up_Delay_Pool = Big_Claw_Up_Delay_Pool+1;
+//        Small_Claw_Up_Delay_Pool = Small_Claw_Up_Delay_Pool+1;
 //    }   
 //	}	
 }

@@ -3,7 +3,7 @@
 
 #include "stm32f4xx.h"
 
-extern u16 ADC_Converted_Buff; //ADC数据缓存
+extern u16 ADC_Converted_Buff[2]; //ADC数据缓存
 
 void ADC_DMA_Init(void);
 float Get_Vol(u16 AdcVal);

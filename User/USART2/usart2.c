@@ -3,12 +3,13 @@
 *********************************************************************************************/
 #include "usart2.h"
 #include "bsp_led.h"
+#include "LCFunc.h"
 #include "Data_type.h"
 
 #define U2_BUFFSIZERECE  1000
 #define U2_BUFFSIZESEND  100
 
-char u2_receive_buff[U2_BUFFSIZERECE] = {0};
+uint8_t u2_receive_buff[U2_BUFFSIZERECE] = {0};
 
 #define USARTx                           USART2
 #define USARTx_CLK                       RCC_APB1Periph_USART2
@@ -16,16 +17,16 @@ char u2_receive_buff[U2_BUFFSIZERECE] = {0};
 #define USARTx_IRQn                      USART2_IRQn
 #define USARTx_IRQHandler                USART2_IRQHandler
 
-#define USARTx_TX_PIN                    GPIO_Pin_2              
-#define USARTx_TX_GPIO_PORT              GPIOA                       
-#define USARTx_TX_GPIO_CLK               RCC_AHB1Periph_GPIOA
-#define USARTx_TX_SOURCE                 GPIO_PinSource2
+#define USARTx_TX_PIN                    GPIO_Pin_5              
+#define USARTx_TX_GPIO_PORT              GPIOD                       
+#define USARTx_TX_GPIO_CLK               RCC_AHB1Periph_GPIOD
+#define USARTx_TX_SOURCE                 GPIO_PinSource5
 #define USARTx_TX_AF                     GPIO_AF_USART2
 
-#define USARTx_RX_PIN                    GPIO_Pin_3         
-#define USARTx_RX_GPIO_PORT              GPIOA                    
-#define USARTx_RX_GPIO_CLK               RCC_AHB1Periph_GPIOA
-#define USARTx_RX_SOURCE                 GPIO_PinSource3
+#define USARTx_RX_PIN                    GPIO_Pin_6         
+#define USARTx_RX_GPIO_PORT              GPIOD                    
+#define USARTx_RX_GPIO_CLK               RCC_AHB1Periph_GPIOD
+#define USARTx_RX_SOURCE                 GPIO_PinSource6
 #define USARTx_RX_AF                     GPIO_AF_USART2
 
 #define USARTx_DMA                       DMA1
@@ -59,14 +60,14 @@ static void bsp_initUSART(u32 bound)
 	GPIO_InitTypeDef GPIO_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 
-	RCC_AHB1PeriphClockCmd(USARTx_RX_GPIO_CLK, ENABLE);//使能GPIOA时钟
-//	RCC_AHB1PeriphClockCmd(USARTx_TX_GPIO_CLK|USARTx_RX_GPIO_CLK, ENABLE);//使能GPIOA时钟
+	//RCC_AHB1PeriphClockCmd(USARTx_RX_GPIO_CLK, ENABLE);//使能GPIOA时钟
+	RCC_AHB1PeriphClockCmd(USARTx_TX_GPIO_CLK|USARTx_RX_GPIO_CLK, ENABLE);//使能GPIOA时钟
 	USARTx_CLK_INIT(USARTx_CLK, ENABLE);
 
 	RCC_AHB1PeriphClockCmd(USARTx_DMAx_CLK, ENABLE);  //使能DMA1时钟
 
 	//串口2对应引脚复用映射
-//	GPIO_PinAFConfig(USARTx_TX_GPIO_PORT, USARTx_TX_SOURCE, USARTx_TX_AF);
+	GPIO_PinAFConfig(USARTx_TX_GPIO_PORT, USARTx_TX_SOURCE, USARTx_TX_AF);
 	GPIO_PinAFConfig(USARTx_RX_GPIO_PORT, USARTx_RX_SOURCE, USARTx_RX_AF);
 
 	 //USART端口配置
@@ -74,10 +75,10 @@ static void bsp_initUSART(u32 bound)
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
 	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
-/*
+
 	GPIO_InitStructure.GPIO_Pin = USARTx_TX_PIN;
 	GPIO_Init(USARTx_TX_GPIO_PORT, &GPIO_InitStructure);
-*/
+	
 	GPIO_InitStructure.GPIO_Pin = USARTx_RX_PIN; 
 	GPIO_Init(USARTx_RX_GPIO_PORT, &GPIO_InitStructure);
 
@@ -87,14 +88,14 @@ static void bsp_initUSART(u32 bound)
 	USART_InitStructure.USART_StopBits = USART_StopBits_1;
 	USART_InitStructure.USART_Parity = USART_Parity_No;
 	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-	USART_InitStructure.USART_Mode = USART_Mode_Rx;
+	USART_InitStructure.USART_Mode = USART_Mode_Rx| USART_Mode_Tx;
 	USART_Init(USARTx, &USART_InitStructure);
 	
 	USART_DMA_RxConfig();   //配置DMA
 	USART_DMA_Tx_init(0,10);   //配置发送DMA
 	USART_DMACmd(USARTx, USART_DMAReq_Rx, ENABLE);
 
-//	USART_DMACmd(USARTx, USART_DMAReq_Tx, ENABLE);
+	USART_DMACmd(USARTx, USART_DMAReq_Tx, ENABLE);
 	DMA_ITConfig(USART_TX_DMA, DMA_IT_TC, ENABLE);  //开启相关中断	
 
    //USART NVIC 配置
@@ -193,7 +194,7 @@ static void USART_DMA_Tx_init(uint32_t *BufferSRC, uint32_t BufferSize)
 
 void USART2_DMA_TxConfig(uint32_t *BufferSRC, uint32_t BufferSize)
 {
-		
+
 	while (DMA_GetCmdStatus(USART_TX_DMA) != DISABLE)
 	{
 	}
@@ -215,7 +216,8 @@ static void USART_RX_DMAReset(void)
  	DMA_SetCurrDataCounter(USART_RX_DMA,U2_BUFFSIZERECE);//DMA通道的DMA缓存的大小
  	DMA_Cmd(USART_RX_DMA, ENABLE); 
 }	
-int sum1;
+u8 sum1;
+
 void USARTx_IRQHandler(void)
 {	
 	if (USART_GetITStatus(USARTx, USART_IT_IDLE) == SET)       
@@ -234,16 +236,16 @@ void USARTx_IRQHandler(void)
 					}
 					if(u2_receive_buff[13] == sum1)
 					{
-						mpu.acc_z     = ((short)(u2_receive_buff[2]<<8| u2_receive_buff[1]))/32767.0*16;
-						mpu.gyro_z    = ((short)(u2_receive_buff[4]<<8| u2_receive_buff[3]))/32767.0*2000;
-						mpu.angle_x   = ((short)(u2_receive_buff[6]<<8| u2_receive_buff[5]))/32767.0*180;
-						mpu.angle_y   = ((short)(u2_receive_buff[8]<<8| u2_receive_buff[7]))/32767.0*180;
-						mpu.angle_z   = ((short)(u2_receive_buff[10]<<8| u2_receive_buff[9]))/32767.0*180;  
-						laser.sampleval1 = (u2_receive_buff[12]<<8|u2_receive_buff[11]);
+						mpu.dis  = ((int)(u2_receive_buff[3]<<24 | u2_receive_buff[2]<<16 | u2_receive_buff[1]<<8))/256;
+						mpu.angle_x   = ((short)u2_receive_buff[5]<<8 | u2_receive_buff[4] )/100.0;
+						mpu.angle_y   = ((short)u2_receive_buff[7]<<8 | u2_receive_buff[6] )/100.0;
+						mpu.angle_z   = ((short)u2_receive_buff[9]<<8 | u2_receive_buff[8] )/100.0; 
+						laser.sampleval1 = (u2_receive_buff[11]<<8|u2_receive_buff[10]);
 						laser.dis1       =  5.0f*((laser.sampleval1*3300.0f)/4096.0f)-3000.0f;   //下
 						Up_Data.P_z = (int)laser.dis1;
+						//Up_Data.P_z = mpu.dis;
 						Up_Data.A_x = (int16_t)mpu.angle_x;
-						Up_Data.A_y = (int16_t)mpu.angle_y;
+						Up_Data.A_y = (int16_t)mpu.angle_x;
 					}
 					sum1=0;					
 				}
@@ -328,4 +330,5 @@ void USART2_Upper_f_Computer(float data1,float data2,float data3,float data4)
 	Send_DATA[20]=sum;
 	USART2_DMA_TxConfig((u32*)Send_DATA,21);
 }
+
 

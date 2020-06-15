@@ -9,6 +9,6 @@
 
 /************************************************************/
 
-void EXTI10_Init(void);
+void EXTIX_Init(void);
 
 #endif 

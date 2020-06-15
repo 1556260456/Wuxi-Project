@@ -3,7 +3,7 @@
 *********************************************************************************************/
 #include "usart1.h"
 #include "Data_type.h"
-
+#include "bsp_led.h" 
 #define U1_BUFFSIZERECE  100
 #define U1_BUFFSIZESEND  100
 
@@ -52,9 +52,9 @@ uint8_t uart_cmd;
 
 
 static void bsp_initUSART(u32 bound);
-static void USART_DMA_RxConfig(void);
+static void USART1_DMA_RxConfig(void);
 static void USART_RX_DMAReset(void);
-static void USART_DMA_Tx_init(uint32_t *BufferSRC, uint32_t BufferSize);
+static void USART1_DMA_Tx_init(uint32_t *BufferSRC, uint32_t BufferSize);
 
 void USART1_Init(u32 bound)
 {
@@ -103,8 +103,8 @@ static void bsp_initUSART(u32 bound)
 	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
 	USART_Init(USARTx, &USART_InitStructure);
 	
-	USART_DMA_RxConfig();                                                                       //配置DMA
-	USART_DMA_Tx_init(0,10);                                                                    //配置发送DMA
+	USART1_DMA_RxConfig();                                                                       //配置DMA
+	USART1_DMA_Tx_init(0,10);                                                                    //配置发送DMA
 	/* 使能 USART DMA RX 请求 */
 	USART_DMACmd(USARTx, USART_DMAReq_Rx, ENABLE);
 
@@ -131,7 +131,7 @@ static void bsp_initUSART(u32 bound)
 	
 }
 
-static void USART_DMA_RxConfig(void)
+static void USART1_DMA_RxConfig(void)
 {
 	DMA_InitTypeDef  DMA_InitStructure;
 	/* 
@@ -164,7 +164,7 @@ static void USART_DMA_RxConfig(void)
 	DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory ;     /* 设置从外设到内存 */
 	DMA_InitStructure.DMA_Memory0BaseAddr =(uint32_t)u1_receive_buff ; /* 设置内存地址 */
 	DMA_Init(USART_RX_DMA,&DMA_InitStructure);
-	
+
 	/* 使能 DMA USART RX Stream */
 	DMA_Cmd(USART_RX_DMA, ENABLE);
 }
@@ -195,10 +195,11 @@ static void USART_DMA_RxConfig(void)
 #define DMA_Stream7_IT_MASK     (uint32_t)(DMA_Stream3_IT_MASK | (uint32_t)0x20000000)
 
 
-static void USART_DMA_Tx_init(uint32_t *BufferSRC, uint32_t BufferSize)
+static void USART1_DMA_Tx_init(uint32_t *BufferSRC, uint32_t BufferSize)
 {
 	DMA_InitTypeDef  DMA_InitStructure;
 	
+
 	/* 复位 DMA Stream 寄存器 (用于调试目的) */
  	/* DMA_DeInit(USARTx_TX_DMA_STREAM); */
 
@@ -230,6 +231,8 @@ static void USART_DMA_Tx_init(uint32_t *BufferSRC, uint32_t BufferSize)
 	DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral ;     /* 设置从内存到外设 */
 	DMA_InitStructure.DMA_Memory0BaseAddr =(uint32_t)BufferSRC ; /* 设置内存地址 */
 	DMA_Init(USART_TX_DMA,&DMA_InitStructure);
+
+	
 	/* 使能发送传输完成中断 */
 	//DMA_ITConfig(USART_TX_DMA, DMA_IT_TC, ENABLE);  		
 	/* 使能 DMA USART TX Stream */
@@ -284,25 +287,28 @@ static void USART_RX_DMAReset(void)
 }	
 
 //进中断
-int sum;
+u8 sum;
+int len1,len2=0;
 void USARTx_IRQHandler(void)
 {	
 	if (USART_GetITStatus(USARTx, USART_IT_IDLE) == SET)       //当接收到数据完成
 	{
 		 USART_ReceiveData(USARTx);                         //读取数据 注意：这句必须要，否则不能够清除中断标志位。
 		 uint8_t Uart1_Rec_Len = U1_BUFFSIZERECE - DMA_GetCurrDataCounter(USART_RX_DMA);			//算出接本帧数据长度
+		 len1 = Uart1_Rec_Len;
 	   USART_RX_DMAReset();
 		 //数据帧处理
-		 if(8==Uart1_Rec_Len)
+		 if(6==Uart1_Rec_Len)
 		 {
 				if(0xEE == u1_receive_buff[0])//SMALL_CAR  小车是AA?
 				{
-					for(uint8_t i=0;i<7;i++)
+					for(uint8_t i=0;i<5;i++)
 					{
 						sum += u1_receive_buff[i];
 					}
-					if(u1_receive_buff[7] == sum)
+					if(u1_receive_buff[5] == sum)
 					{
+						LED1_TOGGLE;
 						laser.sampleval2 = (u1_receive_buff[2]<<8|u1_receive_buff[1]);
 						laser.sampleval3 = (u1_receive_buff[4]<<8|u1_receive_buff[3]);	
 						laser.dis2 = 10.0f*((laser.sampleval2*3300.0f)/4096.0f)-6000.0f+60.0f;//  小车X为2
@@ -348,7 +354,6 @@ void RequestStopToSmallCar(void)
 	}	
 }
 
-
 //请求小车433开始发送指令
 void RequestStartToSmallCar(void)
 {
@@ -356,7 +361,8 @@ void RequestStartToSmallCar(void)
 	{
 			uart1_tx_task(send_request_to_xxx[SMALL_CAR],1);
 			delay_ms(200);		
-	}	
+	}
+	
 }
 
 #define BYTE0(dwTemp)       (*(char *)(&dwTemp))      
@@ -410,3 +416,6 @@ void USART1_Upper_f_Computer(float data1,float data2,float data3,float data4,flo
 	Send_DATA[28]=sum;
 	USART1_DMA_TxConfig((u32*)Send_DATA,29);
 }
+
+
+

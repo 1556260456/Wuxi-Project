@@ -1,12 +1,17 @@
 #include "usart3.h"
 #include "Data_type.h"
 #include "Manual.h"
+#include "LCFunc.h"
+#include "relay.h"
 #include "RS485.h"
 #include "CRC.h"
+#include "bsp_led.h" 
+
 #define U3_BUFFSIZERECE  100
 #define U3_BUFFSIZESEND  100
 
 uint8_t u3_receive_buff[U3_BUFFSIZERECE] = {0};
+uint8_t u3_send_buff[U3_BUFFSIZESEND] = {0};
 extern int8_t IsExecute;//1:执行下一步,0：不执行下一步
 
 /*
@@ -30,15 +35,15 @@ extern int8_t IsExecute;//1:执行下一步,0：不执行下一步
 #define USARTx_TX_SOURCE                 GPIO_PinSource10
 #define USARTx_TX_AF                     GPIO_AF_USART3
 
-#define USARTx_RX_PIN                    GPIO_Pin_11        
-#define USARTx_RX_GPIO_PORT              GPIOB                    
+#define USARTx_RX_PIN                    GPIO_Pin_11
+#define USARTx_RX_GPIO_PORT              GPIOB
 #define USARTx_RX_GPIO_CLK               RCC_AHB1Periph_GPIOB
 #define USARTx_RX_SOURCE                 GPIO_PinSource11
 #define USARTx_RX_AF                     GPIO_AF_USART3
 
 #define USARTx_DMA                       DMA1
 #define USARTx_DMAx_CLK                  RCC_AHB1Periph_DMA1
-#define DMACLEAR                         DMA1->HIFCR = DMA_Stream3_IT_MASK;
+#define DMACLEAR                         DMA1->LIFCR = DMA_Stream3_IT_MASK;
 
 
 #define USART_RX_DMA 										DMA1_Stream1
@@ -51,9 +56,9 @@ extern int8_t IsExecute;//1:执行下一步,0：不执行下一步
 
 
 static void bsp_initUSART(u32 bound);
-static void USART_DMA_RxConfig(void);
-static void USART_RX_DMAReset(void);
-static void USART_DMA_Tx_init(uint32_t *BufferSRC, uint32_t BufferSize);
+static void USART3_DMA_RxConfig(void);
+static void USART3_RX_DMAReset(void);
+static void USART3_DMA_Tx_init(uint32_t *BufferSRC, uint32_t BufferSize);
 
 void USART3_Init(u32 bound)
 {
@@ -67,22 +72,17 @@ static void bsp_initUSART(u32 bound)
 	GPIO_InitTypeDef GPIO_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 
-	/*************************************初始化串口3 用于双机通讯*************************************/
-	/* 使能 GPIO clock */
-	RCC_AHB1PeriphClockCmd(USARTx_TX_GPIO_CLK|USARTx_RX_GPIO_CLK, ENABLE);
+	RCC_AHB1PeriphClockCmd(USARTx_TX_GPIO_CLK|USARTx_RX_GPIO_CLK, ENABLE);//使能GPIOA时钟
 
-	/* 使能 USART clock */
 	USARTx_CLK_INIT(USARTx_CLK, ENABLE);
 
-	/* 使能  DMA clock */
-	RCC_AHB1PeriphClockCmd(USARTx_DMAx_CLK, ENABLE);
+	RCC_AHB1PeriphClockCmd(USARTx_DMAx_CLK, ENABLE);  //使能DMA1时钟
 
-	/* USART1 GPIO configuration -----------------------------------------------*/ 
-	/* Connect USART pins to AF7 */
+	//串口4对应引脚复用映射
 	GPIO_PinAFConfig(USARTx_TX_GPIO_PORT, USARTx_TX_SOURCE, USARTx_TX_AF);
 	GPIO_PinAFConfig(USARTx_RX_GPIO_PORT, USARTx_RX_SOURCE, USARTx_RX_AF);
 
-	/* Configure USART Tx and Rx as alternate function push-pull */
+	 //USART端口配置
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
 	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
@@ -94,77 +94,64 @@ static void bsp_initUSART(u32 bound)
 	GPIO_InitStructure.GPIO_Pin = USARTx_RX_PIN; 
 	GPIO_Init(USARTx_RX_GPIO_PORT, &GPIO_InitStructure);
 
+  //UART4 初始化设置
 	USART_InitStructure.USART_BaudRate = bound;
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-	USART_InitStructure.USART_StopBits = USART_StopBits_1;
-	/* When using Parity the word length must be configured to 9 bits */
+	USART_InitStructure.USART_StopBits = USART_StopBits_2;
 	USART_InitStructure.USART_Parity = USART_Parity_No;
 	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
 	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
 	USART_Init(USARTx, &USART_InitStructure);
 	
-	USART_DMA_RxConfig();   //配置DMA
-	USART_DMA_Tx_init(0,10);   //配置发送DMA
-	/* 使能 USART DMA RX 请求 */
+	USART3_DMA_RxConfig();   //配置DMA
+	USART3_DMA_Tx_init(0,10);   //配置发送DMA
 	USART_DMACmd(USARTx, USART_DMAReq_Rx, ENABLE);
 
-	/* 使能 USART DMA TX 请求 */
 	USART_DMACmd(USARTx, USART_DMAReq_Tx, ENABLE);
-	/* 使能发送传输完成中断 */
-	DMA_ITConfig(USART_TX_DMA, DMA_IT_TC, ENABLE);  	
-	
+	DMA_ITConfig(USART_TX_DMA, DMA_IT_TC, ENABLE);  //开启相关中断	
+
    //USART NVIC 配置
-	NVIC_InitStructure.NVIC_IRQChannel = USARTx_IRQn;//串口2中断通道
+	NVIC_InitStructure.NVIC_IRQChannel = USARTx_IRQn;//串口4中断通道
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;  	//抢占优先级1
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;         	//子优先级1  第一时间响应
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;         	//子优先级0  第一时间响应
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;             //IRQ通道使能
 	NVIC_Init(&NVIC_InitStructure);//根据指定的参数初始化VIC寄存器、
 
-	//开启中断 
 	USART_ITConfig(USARTx,USART_IT_IDLE,ENABLE);
-	//TC中断，在DMA传输数据完成时，触发TC中断
 	USART_ITConfig(USARTx,USART_IT_TC,ENABLE);
-	/* Enable USART */
 	USART_Cmd(USARTx, ENABLE);
 	USART_ClearFlag(USARTx, USART_FLAG_TC);
 }
 
-static void USART_DMA_RxConfig(void)
+static void USART3_DMA_RxConfig(void)
 {
 	DMA_InitTypeDef  DMA_InitStructure;
-	/* 
-	  使能前检测DMA是否被禁止。
-	  请注意，在使用相同数据流的多次传输时，这一步很有用：使能，然后禁止，然后使能
-	  ..... 在这种情况下，只有在数据传输结束的时候，DMA的禁止才有效，在确保使能位被
-	  硬件清除之前做确认是不可能的，如果DMA传输只做一次，这一步可以忽略。
-	*/
 	DMA_DeInit(USART_RX_DMA);
 	DMA_Cmd(USART_RX_DMA, DISABLE); 
 	while (DMA_GetCmdStatus(USART_RX_DMA) != DISABLE)
 	{
 	}
 	
-	DMA_InitStructure.DMA_BufferSize = U3_BUFFSIZERECE;                 /* 配置DMA大小 */
-	DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Enable;          /* 在这个程序里面使能或者禁止都可以的 */
-	DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_Full;  /* 设置阀值 */
-	DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single ;   /* 设置内存为单字节突发模式 */
-	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;/* 设置内存数据的位宽是字节 */
-	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;        /* 使能地址自增 */
-	DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;                  /* 设置DMA是正常模式 */
-	DMA_InitStructure.DMA_PeripheralBaseAddr =USART_RX_DMA_PeripheralBaseAddr ;  /* 设置外设地址 */
-	DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;     /* 设置外设为单字节突发模式 */
-	DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte; /* 设置外设数据的位宽是字节 */
-	DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;      /* 禁止外设地址自增 */
-	DMA_InitStructure.DMA_Priority = DMA_Priority_Medium;                   /* 设置优先级 */
+	DMA_InitStructure.DMA_BufferSize = U3_BUFFSIZERECE;              
+	DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Enable;         
+	DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_Full; 
+	DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single ;   
+	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
+	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;       
+	DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;                 
+	DMA_InitStructure.DMA_PeripheralBaseAddr =USART_RX_DMA_PeripheralBaseAddr ; 
+	DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;     
+	DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+	DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;     
+	DMA_InitStructure.DMA_Priority = DMA_Priority_Medium;                  
 	
-	/* 配置 RX DMA */
-	DMA_InitStructure.DMA_Channel = USART_RX_DMA_Channel ;      /* 配置接收通道 */
-	DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory ;     /* 设置从外设到内存 */
-	DMA_InitStructure.DMA_Memory0BaseAddr =(uint32_t)u3_receive_buff ; /* 设置内存地址 */
+
+	DMA_InitStructure.DMA_Channel = USART_RX_DMA_Channel ;    
+	DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralToMemory ;    
+	DMA_InitStructure.DMA_Memory0BaseAddr =(uint32_t)u3_receive_buff ;
 	DMA_Init(USART_RX_DMA,&DMA_InitStructure);
 	
-	/* 使能 DMA USART TX Stream */
-	DMA_Cmd(USART_RX_DMA, ENABLE);
+	DMA_Cmd(USART_RX_DMA, ENABLE); //开启DMA传输
 }
 
 /*
@@ -193,21 +180,12 @@ static void USART_DMA_RxConfig(void)
 #define DMA_Stream7_IT_MASK     (uint32_t)(DMA_Stream3_IT_MASK | (uint32_t)0x20000000)
 
 
-static void USART_DMA_Tx_init(uint32_t *BufferSRC, uint32_t BufferSize)
+static void USART3_DMA_Tx_init(uint32_t *BufferSRC, uint32_t BufferSize)
 {
 	DMA_InitTypeDef  DMA_InitStructure;
 	
-	/* 复位 DMA Stream 寄存器 (用于调试目的) */
- 	/* DMA_DeInit(USARTx_TX_DMA_STREAM); */
 
-    /* 
-	  使能前检测DMA是否被禁止。
-	  请注意，在使用相同数据流的多次传输时，这一步很有用：使能，然后禁止，然后使能
-	  ..... 在这种情况下，只有在数据传输结束的时候，DMA的禁止才有效，在确保使能位被
-	  硬件清除之前做确认是不可能的，如果DMA传输只做一次，这一步可以忽略。
-	*/
 	DMA_DeInit(USART_TX_DMA);	
-	DMA_Cmd(USART_TX_DMA, DISABLE); 
 	while (DMA_GetCmdStatus(USART_TX_DMA) != DISABLE)
 	{
 	}
@@ -229,52 +207,54 @@ static void USART_DMA_Tx_init(uint32_t *BufferSRC, uint32_t BufferSize)
 	DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToPeripheral ;     /* 设置从内存到外设 */
 	DMA_InitStructure.DMA_Memory0BaseAddr =(uint32_t)BufferSRC ; /* 设置内存地址 */
 	DMA_Init(USART_TX_DMA,&DMA_InitStructure);
-	/* 使能发送传输完成中断 */
-	DMA_ITConfig(USART_TX_DMA, DMA_IT_TC, ENABLE);  		
-	/* 使能 DMA USART TX Stream */
-//	RS485SEND_1();
-	DMA_Cmd(USART_TX_DMA, ENABLE); 
-	
-	/* 
-	   检测DMA Stream 是否被正确的使能.如果DMA的参数配置错误了，那么DMA Stream
-	   的使能位会被硬件清除掉，从而使得传输停止比如FIFO的阀值配置错误
-	*/
 }
 
 void USART3_DMA_TxConfig(uint32_t *BufferSRC, uint32_t BufferSize)
 {
 	
-	/* 复位 DMA Stream 寄存器 (用于调试目的) */
- 	/* DMA_DeInit(USARTx_TX_DMA_STREAM); */
-
-    /* 
-	  使能前检测DMA是否被禁止。
-	  请注意，在使用相同数据流的多次传输时，这一步很有用：使能，然后禁止，然后使能
-	  ..... 在这种情况下，只有在数据传输结束的时候，DMA的禁止才有效，在确保使能位被
-	  硬件清除之前做确认是不可能的，如果DMA传输只做一次，这一步可以忽略。
-	*/
-	//DMA_DeInit(DMA1_Stream0);
-	//DMA1_Stream0->CR  = 0;		
+//	for(int i = 0;i < BufferSize;i++)
+//	{
+//		u3_send_buff[i] = BufferSRC[i];
+//	}	
+//	DMA_Cmd(USART_TX_DMA, DISABLE);
+//	while (DMA_GetCmdStatus(USART_TX_DMA) != DISABLE)
+//	{
+//	}
+//	DMA_SetCurrDataCounter(USART_TX_DMA,BufferSize);	
+//	DMA_Cmd(USART_TX_DMA, ENABLE); 
 	DMA_Cmd(USART_TX_DMA, DISABLE);
 	while (DMA_GetCmdStatus(USART_TX_DMA) != DISABLE)
 	{
 	}
+	
 	USART_TX_DMA->NDTR = BufferSize;
 	USART_TX_DMA->M0AR = (uint32_t)BufferSRC;
-	/* 使能发送传输完成中断 */
-	//DMA_ITConfig(USART_TX_DMA, DMA_IT_TC, ENABLE);  		
-	/* 使能 DMA USART TX Stream */
-	DMA_Cmd(USART_TX_DMA, ENABLE); 
-	
-	/* 
-	   检测DMA Stream 是否被正确的使能.如果DMA的参数配置错误了，那么DMA Stream
-	   的使能位会被硬件清除掉，从而使得传输停止比如FIFO的阀值配置错误
-	*/
-	
-}
 
-static void USART_RX_DMAReset(void)
+	DMA_Cmd(USART_TX_DMA, ENABLE); 
+}
+/*
+void DMA1_Stream3_IRQHandler(void)
+{
+	//DMA transmission completed?
+	if(DMA_GetFlagStatus(USART_TX_DMA,DMA_FLAG_TCIF3) != RESET)
+	{
+		//Clear flag
+		DMA_ClearFlag(USART_TX_DMA, DMA_FLAG_TCIF3 | DMA_FLAG_FEIF3 | 
+					  DMA_FLAG_DMEIF3 | DMA_FLAG_TEIF3 | DMA_FLAG_HTIF3);
+		
+		//Wait for USART1 to send complete flag TC is set
+		while(!USART_GetFlagStatus(USART3, USART_FLAG_TC));
+		//Clear send complete flag
+		USART_ClearFlag(USART3, USART_FLAG_TC); 
+		
+		RS485_DE = 0;
+		RS485_RE = 1;
+	}
+}
+*/
+static void USART3_RX_DMAReset(void)
 { 
+	
 	DMA_Cmd(USART_RX_DMA, DISABLE);   
 	while (DMA_GetCmdStatus(USART_RX_DMA) != DISABLE)
 	{
@@ -292,95 +272,165 @@ void USARTx_IRQHandler(void)
 {	
 	u8 i=0;
   u16 CRC_NUM;
+	//static int temp = 0;
 	u8 valid_data[100];
 	
 	if (USART_GetITStatus(USARTx, USART_IT_IDLE) == SET)       //当接收到数据完成
 	{
 		 USART_ReceiveData(USARTx);                         //读取数据 注意：这句必须要，否则不能够清除中断标志位。
 		 uint8_t Uart1_Rec_Len = U3_BUFFSIZERECE - DMA_GetCurrDataCounter(USART_RX_DMA);			//算出接本帧数据长度
-	   USART_RX_DMAReset();
-		
+	   USART3_RX_DMAReset();
 		 //数据帧处理
 		 if(0xAB == u3_receive_buff[0])//地址码
 		 {
 			 //CRC校验
-			 for(int j = 1;j<u3_receive_buff[1]-2;j++)
+			 for(int j = 3;j<u3_receive_buff[1]-2;j++)
 					valid_data[i++] = u3_receive_buff[j];
-			 CRC_NUM = (u3_receive_buff[u3_receive_buff[1]-2] << 8 | u3_receive_buff[u3_receive_buff[1]-1]);
+			 CRC_NUM = (u3_receive_buff[u3_receive_buff[1]-1] << 8 | u3_receive_buff[u3_receive_buff[1]-2]);
 			 
 			 if(CRC_NUM == CRC16(valid_data,i))//CRC校验通过
 			 {
-					if(0==(u3_receive_buff[2]&0x07))//监听,长时间运行状态
+				 #if Manual == 3
+					if(1==(u3_receive_buff[2]&0x07))//监听,长时间运行状态
 					{
 						//WaitFlag = 0;
 						Up_Data.Status &= 0xF8;
-						Up_Data.Status |= 0x00;//返回该值，说明已成功接收到	
+						Up_Data.Status |= 0x00;//返回该值，说明已成功接收到
+						Up_Data_Flag = 1;	
 					}
-					else if(1==(u3_receive_buff[2]&0x07))//手动
+					else if(2==(u3_receive_buff[2]&0x07))//手动
 					{
-						WaitFlag = 1;
-						Run_Mode = 1;
-						HTaskModeFlag = u3_receive_buff[2]>>3;
-						
-						Up_Data.Status &= 0xF8;
-						Up_Data.Status |= 0x01;//返回该值，说明已成功接收到									
-					}
-					else if(2==(u3_receive_buff[2]&0x07))//半自动
-					{
-						target.x[0] = (u3_receive_buff[12]<<16)|(u3_receive_buff[13]<<16)|(u3_receive_buff[14]);
-						target.y[0] = (u3_receive_buff[14]<<15)|(u3_receive_buff[16]<<16)|(u3_receive_buff[17]); 
-						
-						WaitFlag = 1;
-						Run_Mode = 2;	
-						
-						Up_Data.Status &= 0xF8;
-						Up_Data.Status |= 0x02;//返回该值，说明已成功接收到			
-					}
-					else if(3==(u3_receive_buff[2]&0x07))//全自动
-					{
-						target.x[0] = (u3_receive_buff[12]<<16)|(u3_receive_buff[13]<<16)|(u3_receive_buff[14]);
-						target.y[0] = (u3_receive_buff[14]<<15)|(u3_receive_buff[16]<<16)|(u3_receive_buff[17]); 
-						
-						if((u3_receive_buff[21]>>4)==0x01)
-							IsExecute = 1;//确认执行下一步
-						
-						WaitFlag = 1;
-						Run_Mode = 3;		
-						Up_Data.Status &= 0xF8;
-						Up_Data.Status |= 0x03;//返回该值，说明已成功接收到
-					}
-					else if(4==(u3_receive_buff[2]&0x07))//  暂停
-					{
-						
-					}
-					else if(5==(u3_receive_buff[2]&0x07))//  恢复
-					{
-					
-					}
-					else if(6==(u3_receive_buff[2]&0x07))//停止
-					{
-					
-					}
-					else if(7==(u3_receive_buff[2]&0x07))//重启
-					{
-						
-					}			 
-			 }
-				
-				Up_Data_Flag = 1;
-		 }
-		
-		 //直接在中断中接收处理数据 
+						if(RelayOnflag == -2)// 这里要打开遥控器才会等于-2
+						{
+							HTaskModeFlag = u3_receive_buff[2]>>3;   //
+							if(HTaskModeFlag == 1 || HTaskModeFlag == 2)
+							{
+								WaitFlag = 1;
+								Run_Mode = 1;
+								target.x[1] = ((int)u3_receive_buff[14]<<16)|((int)u3_receive_buff[13]<<8)|(u3_receive_buff[12]);
+								target.y[1] = ((int)u3_receive_buff[17]<<16)|((int)u3_receive_buff[16]<<8)|(u3_receive_buff[15]); 
+							}
+							else if((HTaskModeFlag == 3) || (HTaskModeFlag == 6) ){//上升下降的几种模式
+//								target.uwbdis[0] = ((int)u3_receive_buff[20]<<16)|((int)u3_receive_buff[19]<<8)|(u3_receive_buff[18]);
+//								target.z[0] = ((int)u3_receive_buff[11]<<16)|((int)u3_receive_buff[10]<<8)|(u3_receive_buff[9]);
+								target.z[1] = ((int)u3_receive_buff[20]<<16)|((int)u3_receive_buff[19]<<8)|(u3_receive_buff[18]);
+								WaitFlag = 1;
+								Run_Mode = 1;	
+							}
 
-	}else if(USART_GetITStatus(USARTx, USART_IT_TC) == SET)
+						
+//					else if(2==(u3_receive_buff[2]&0x07))//半自动
+//					{
+//						target.x[0] = ((int)u3_receive_buff[12]<<16)|((int)u3_receive_buff[13]<<8)|(u3_receive_buff[14]);
+//						target.y[0] = ((int)u3_receive_buff[14]<<15)|((int)u3_receive_buff[16]<<8)|(u3_receive_buff[17]); 
+
+//						if((u3_receive_buff[21]>>4)==0x01)
+//							IsExecute = 1;//确认执行下一步
+//						
+//						WaitFlag = 1;
+//						Run_Mode = 2;	
+//						
+//						Up_Data.Status &= 0xF8;
+//						Up_Data.Status |= 0x02;//返回该值，说明已成功接收到			
+//					}
+//					else if(3==(u3_receive_buff[2]&0x07))//全自动
+//					{
+//						target.x[0] = ((int)u3_receive_buff[12]<<16)|((int)u3_receive_buff[13]<<8)|(u3_receive_buff[14]);
+//						target.y[0] = ((int)u3_receive_buff[14]<<15)|((int)u3_receive_buff[16]<<8)|(u3_receive_buff[17]); 
+//						
+
+//						
+//						WaitFlag = 1;
+//						Run_Mode = 3;		
+//						Up_Data.Status &= 0xF8;
+//						Up_Data.Status |= 0x03;//返回该值，说明已成功接收到
+//					}
+//					else if(4==(u3_receive_buff[2]&0x07))//  暂停
+//					{
+//						
+//					}
+//					else if(5==(u3_receive_buff[2]&0x07))//  恢复
+//					{
+//					
+//					}
+//					else if(6==(u3_receive_buff[2]&0x07))//停止
+//					{
+//					
+//					}
+//					else if(7==(u3_receive_buff[2]&0x07))//重启
+//					{
+//						
+//					}	
+						else if(HTaskModeFlag == 9){//抓料
+							  WaitFlag = 1;
+							  Run_Mode = 1;	
+						}
+						else if(HTaskModeFlag == 10){//放料
+							  WaitFlag = 1;
+							  Run_Mode = 1;	
+						}
+						else if(HTaskModeFlag == 0){
+//						  temp=0;//清零
+							  Up_Data.Status &= 0x87;//此时的状态值  无任务
+						}
+					}
+						if(1 == (u3_receive_buff[21]&0x07)){//打开遥控器
+							  WaitFlag = 1;
+							  Run_Mode = 1;
+							  HTaskModeFlag = 7;
+						 }
+						else if(2 == (u3_receive_buff[21]&0x07))
+						{//关闭遥控器
+								WaitFlag = 1;
+								Run_Mode = 1;
+								HTaskModeFlag = 8;
+						}	
+						 Up_Data.Status &= 0xF8;
+						 Up_Data.Status |= 0x02;//返回该值，说明已成功接收到
+						 Up_Data_Flag = 1;							
+			 }
+			else if(3==(u3_receive_buff[2]&0x07))//半自动
+			{
+				target.x[0] = ((int)u3_receive_buff[14]<<16)|((int)u3_receive_buff[13]<<8)|(u3_receive_buff[12]);
+				target.y[0] = ((int)u3_receive_buff[17]<<15)|((int)u3_receive_buff[16]<<8)|(u3_receive_buff[15]); 
+
+				if((u3_receive_buff[21]>>4)==0x01)
+					IsExecute = 1;//确认执行下一步
+				
+				WaitFlag = 1;
+				Run_Mode = 2;	
+				
+				Up_Data.Status &= 0xF8;
+				Up_Data.Status |= 0x03;//返回该值，说明已成功接收到			
+			}
+			else if(4==(u3_receive_buff[2]&0x07))//全自动
+			{
+				target.x[0] = ((int)u3_receive_buff[14]<<16)|((int)u3_receive_buff[13]<<8)|(u3_receive_buff[12]);
+				target.y[0] = ((int)u3_receive_buff[17]<<15)|((int)u3_receive_buff[16]<<8)|(u3_receive_buff[15]); 
+
+				WaitFlag = 1;
+				Run_Mode = 3;		
+				Up_Data.Status &= 0xF8;
+				Up_Data.Status |= 0x04;//返回该值，说明已成功接收到
+			}
+		}				
+		#endif
+		
+		 }
+		}
+		 //直接在中断中接收处理数据
+	else if(USART_GetITStatus(USARTx, USART_IT_TC) == SET)
 	{
 		USART_ClearITPendingBit(USARTx, USART_IT_TC);         //清除中断标志
 		
 		DMACLEAR;
-		DMA_Cmd(USART_TX_DMA, DISABLE); 
+		DMA_Cmd(USART_TX_DMA, DISABLE);
+		RS485_DE = 0;
+		RS485_RE = 0;
 	}
 
-}
+  }
+
 
 
 

@@ -15,7 +15,7 @@ void TIM7_Init(u16 arr,u32 psc)
 	TIM_TimeBaseInitStructure.TIM_ClockDivision=TIM_CKD_DIV1; 
 	TIM_TimeBaseInit(TIM7,&TIM_TimeBaseInitStructure);
 	TIM_ITConfig(TIM7,TIM_IT_Update,ENABLE); 
-	TIM_Cmd(TIM7,ENABLE); 
+	TIM_Cmd(TIM7,DISABLE); 
 	
 	 /***********************NVIC initial****************************************/
 	NVIC_InitStructure.NVIC_IRQChannel=TIM7_IRQn; 

@@ -19,18 +19,19 @@
  */
 extern uint8_t WaitFlag;
 extern uint8_t Run_Mode;
-
+extern uint8_t Origin_state;
  //0:没有运行，1：正常运行结束，2：数据出的故障不得已结束
 uint8_t X_MOVE_BIT=0;
 uint8_t Y_MOVE_BIT=0;
 uint8_t DOWN_BIT=0;
 uint8_t UP_BIT=0;
 
+
 //小爪上升固定时间与距离
-uint8_t down_time = 0;
-uint8_t down_distance = 0;
-uint8_t up_time = 0;
-uint8_t up_distance = 0;
+int down_time = 1;
+int down_distance = -1;
+int up_time = 2;
+int up_distance = -2;
 //下降与上升计时开始标志位
 uint8_t start_up = 0;
 uint8_t start_down = 0;
@@ -44,33 +45,25 @@ uint8_t SmallClawDataCorrect = 0;
 uint8_t ReverseStop = 0;
 //反向时间
 int ReverseTime = 0; 
-//反向操作次数
-uint8_t ReverseCount = 0;
 
 //小行车点动标志位
 uint8_t PointMove = 0;
 //点动时间
 int PointMoveTime = 0; 
 
-//小爪子在料坑上下时用到
-uint8_t UpOrDown = 0;//0代表不准上升，1代表可以上升
-
 //1：表示合拢
-uint8_t CloseFlag = 0;
+short int CloseFlag = -1;
 //合拢延时
 int     CloseDelay = 0;
 //1:表示打开
-uint8_t OpenFlag = 0;
+short int OpenFlag = -1;
 //打开延时
-int     OpenDelay = 0;
+int   OpenDelay = 0;
 //出错状态
 uint8_t ErrorSmallCar = 0;
 
 int64_t Small_Claw_Up_Delay = 0;//延时时间 S
 uint8_t Small_Claw_Up_Delay_Flag = 0;//打开定时器标志位
-
-int64_t Small_Claw_Up_Delay_Pool = 0;
-uint8_t Small_Claw_Up_Delay_Pool_Flag = 0;
 
 Provar BCVar;
 /*
@@ -83,21 +76,31 @@ Provar BCVar;
 *Notes       : 使用此函数前CloseFlag置1，此功能结束后会将CloseFlag和CloseDelay置零
 *****************************************************************************************************************
 */
+static void Close(void)
+{
+	Up_Data.Status = (Up_Data.Status&0x87)|0x38;//此时的状态值  close
+	if(CloseFlag>=0 && CloseFlag <= 50)
+	{
+		PAW_CLOSE(ON);
+	}
+	else if(CloseFlag>=50 && CloseFlag <=60)
+	{		
+		PAW_CLOSE(OFF);
+	}	 
+	else
+	{
+		CloseFlag = -2;
+	}
+}
 void ClosePaw(void)
 {
-	Up_Data.Status = (Up_Data.Status&0x87)|0x30;//此时的状态值 close
-	if(1 == CloseFlag)
+	if(CloseFlag==-1)
 	{
-		if(CloseDelay<100)
-		{
-			PAW_CLOSE(ON);
-		}
-		else
-		{
-			PAW_CLOSE(OFF);	
-			CloseFlag = 2;
-			CloseDelay = 0;
-		}
+		CloseFlag = 0;
+	}
+	if(CloseFlag>=0)
+	{
+		Close();
 	}
 }
 /*
@@ -110,21 +113,31 @@ void ClosePaw(void)
 *Notes       : 使用此函数前OpenFlag置1，此功能结束后会将OpenFlag和OpenDelay置零
 *****************************************************************************************************************
 */
+static void Open(void)
+{
+	Up_Data.Status = (Up_Data.Status&0x87)|0x40;//此时的状态值  release
+	if(OpenFlag>=0 && OpenFlag <=50)
+	{
+		PAW_RELEASE(ON);
+	}
+	else if(OpenFlag>=50 && OpenFlag <=60)
+	{		
+		PAW_RELEASE(OFF);
+	}	 
+	else
+	{
+		OpenFlag = -2;
+	}
+}
 void ReleasePaw(void)
 {
-	Up_Data.Status = (Up_Data.Status&0x87)|0x38;//此时的状态值  release
-	if(1 == OpenFlag)
+	if(OpenFlag==-1)
 	{
-		if(OpenDelay<100)
-		{
-			PAW_RELEASE(ON);
-		}
-		else
-		{
-			PAW_RELEASE(OFF);	
-			OpenFlag = 2;
-			OpenDelay = 0;
-		}
+		OpenFlag = 0;
+	}
+	if(OpenFlag>=0)
+	{
+		Open();
 	}
 }
 /*
@@ -162,8 +175,8 @@ void XMoving(float x)
 		same_dis_count=0;
 	}
 	err_x = laser.dis2-x;
-	
-	if(abs(err_x)>2000)//偏差大于一定范围时，要移动	
+	laser.last_dis2=laser.dis2;
+	if(abs(err_x)>=2000)//偏差大于一定范围时，要移动	
 	{
 		
 		err_x = laser.dis2 - x;    //24米
@@ -189,20 +202,13 @@ void XMoving(float x)
 		
 		if(err_x<0)//小行车向南点动
 		{
-			//小行车反向停止
-			if((err_x<(-200))&&(ReverseCount<2))
-			{
-				RevStop(err_x);			
-			}
-			else if((err_x<(-200))&&(ReverseCount>=2))//小行车向南点动
+			if(err_x<(-200))//小行车向南点动
 			{
 				HorizontalDotMove(err_x,0.0f);
 			}
 		  else/*X方向移动结束*/
 			{
 				CAR_SOUTH(OFF);
-				
-				ReverseCount = 0;
 				PointMove = 0;
 				PointMoveTime = 0;
 				X_MOVE_BIT = 1;
@@ -210,20 +216,13 @@ void XMoving(float x)
 		}
 		else if(err_x>=0)//小行车向北点动
 		{
-			//小行车反向制动			
-			if((err_x>200)&&(ReverseCount<2))
-			{
-				RevStop(err_x);
-			}			
-			else if((err_x>200)&&((ReverseCount)>=2))//小行车向北点动
+			if(err_x>200)//小行车向北点动
 			{
 				HorizontalDotMove(err_x,0.0f);
 			}
 			else/*X方向移动结束*/
 			{
 				CAR_NORTH(OFF);					
-				
-				ReverseCount = 0;
 				PointMove = 0;
 				PointMoveTime = 0;
 				X_MOVE_BIT = 1;
@@ -327,56 +326,112 @@ void YMoving(float y)
 *****************************************************************************************************************
 *                                     void UpPawFromLitterPool(float z)
 *
-*Description : 爪子上升程序（从料坑池上升）  （尚需修改）
-*Arguments   : float z：激光距离垃圾表面的高度(?)
+*Description : 爪子上升程序（从料坑池上升）  
+*Arguments   : float z：所期望的激光位置
 *Returns     : none
 *Notes       : 往下射的激光laser.dis1,依据down_time,down_distance 来确定上升高度
 *****************************************************************************************************************
 */
+
 void UpPawFromLitterPool(float z)
 {
-	float paw_err=0; 
-	float paw_err_last=0;
-	static uint8_t same_dis_count=0;
+	float paw_err = 0; 
+	static float paw_err_last = 0;
+	static int same_dis_count = 0;
+	static uint8_t dis1_err_count = 0;
+	//测试参数
+//	down_distance = 6500;
+//	down_time = 300;
 
 	if (laser.dis1<0)//滤除偶尔出现的错误值
+	{
+		if(dis1_err_count<10)
 		{
+			dis1_err_count++;
 			laser.dis1=laser.last_dis1;
 		}
-	paw_err = laser.dis1 - z;   
+		else
+		{
+			PAW_UP(OFF);
+			dis1_err_count = 0;
+			UP_BIT = 2;
+		}
+	}
+
+	paw_err = z-laser.dis1;  
 	laser.last_dis1 = laser.dis1;   
 	
-	Up_Data.Status = (Up_Data.Status&0x87)|0x20;//此时的状态值 up
-	if(laser.dis1>0 && laser.dis1<10000)
-	{
-		paw_err = abs(laser.dis1 - z);
-		if(paw_err>=100)
+	
+	if(laser.dis1>0 && laser.dis1<9000)    //爪子正常上升，实际距离和期望距离小于0.1米时停止
+	{ 
+		if(abs(paw_err)>=300)
 		{
-			PAW_DOWN(ON);
+			PAW_UP(ON);
+			Up_Data.Status = (Up_Data.Status&0x87)|0x28;//此时的状态值 up
 			start_up = 1;
-		}		
+		}
+		else 
+		{
+			PAW_UP(OFF);
+			UP_BIT=1;
+			start_up = 0;
+		}
 	}
-	if(up_time>=down_time)   //当小爪上升时间与下降时间成某一比例时，停止
+//	if(mpu.dis<=3000)    //           情况1：uwb数据显示高度已经足够
+//	{
+//		PAW_UP(OFF);
+//		UP_BIT = 1;//上升完成标志位置1
+//		start_up = 0;
+//		down_time =1;
+//		up_time = 2;
+//	}
+	if( (Origin_state==0) && (Run_Mode>1) )  //  情况2： 在手动模式是否需要此功能
 	{
-		PAW_DOWN(OFF);
-		start_up = 0;
-		down_time =0;
-		up_time = 0;
-		UP_BIT =1;
+		if(up_time>=down_time)   //当小爪上升时间与下降时间成某一比例时，停止
+		{
+			PAW_UP(OFF);
+			start_up = 0;
+			down_time =1;
+			up_time = 2;
+			UP_BIT =1;
+		}
+		up_distance = laser.dis1;
+		if(up_distance>=down_distance)  //当小爪上升时高度与上一次下降前高度相等，停止
+		{
+			PAW_UP(OFF);
+			start_up = 0;
+			down_time =1;
+			up_time = 2;
+			UP_BIT = 1;
+		}
 	}
-	up_distance = laser.dis1;
-	if(up_distance>=down_distance)  //当小爪上升时高度与上一次下降前高度相等，停止
-	{
-		PAW_DOWN(OFF);
-		start_up = 0;
-		down_time =0;
-		up_time = 0;
-		UP_BIT = 1;
-	}
+//	if((mpu.angle_x>=25.0f) || mpu.angle_y>=25.0f)   //情况3：当爪机倾斜角度较大时，停止运动
+//	{
+//		PAW_UP(OFF);
+//		start_up = 0;
+//		down_time =1;
+//		up_time = 2;
+//		UP_BIT = 1;
+//	}
+	
+//	if(abs(paw_err-paw_err_last)<50)    ///情况4：    处理已经上升到限位的情况   此处的距离和累计次数需要微调
+//	{
+//		same_dis_count = same_dis_count+1;
+//		if (same_dis_count>100)
+//		{
+//			PAW_UP(OFF);
+//			start_up = 0;
+//			down_time =1;
+//			up_time = 2;
+//			same_dis_count=0;			
+//			UP_BIT = 1;
+//		}	
+//	}
 	else
 	{
 		same_dis_count=0;
 	}	
+	paw_err_last=paw_err;	
 }
 
 /*
@@ -394,8 +449,9 @@ void DownPawToLitterPool(float z)
 	/*
 		此处使用小爪子向下激光
 	*/
+	
 	float paw_err=0; 
-	float paw_err_last=0;
+	static float paw_err_last=0;
 	static uint8_t same_dis_count=0;
 	
 	if (laser.dis1<0)//滤除偶尔出现的错误值
@@ -410,8 +466,11 @@ void DownPawToLitterPool(float z)
 	{
 		if(paw_err>=0)//小爪下降
 		{
-			PAW_DOWN(ON);	
-			down_distance = laser.dis1;
+			PAW_DOWN(ON);
+			if(start_down==0)
+			{
+				down_distance = laser.dis1;
+			}
 			start_down = 1;
 		}
 	}
@@ -425,27 +484,27 @@ void DownPawToLitterPool(float z)
 		}
 		else//点动结束
 		{
-			PAW_DOWN(OFF);	
+			PAW_DOWN(OFF);
 			start_down = 0;
 			PointMove = 0;
 			PointMoveTime = 0;	
 			DOWN_BIT = 1;
 		}
 		/*情况2：在点动时爪子倾斜过大*/
-		if ((abs(mpu.angle_x)>10.0f)||(abs(mpu.angle_y)>10.0f))//爪子倾斜超过一定角度，停止下降，跳出循环
+		if ((abs(mpu.angle_x)>25.0f)||(abs(mpu.angle_y)>25.0f))//爪子倾斜超过一定角度，停止下降，跳出循环
 		{
 			PAW_DOWN(OFF);
 			start_down = 0;
 			PointMove = 0;
 			PointMoveTime = 0;	
 			DOWN_BIT = 1;
-		} 		
+		} 	
 		/*情况3：爪子无法下降，但是绳索仍然下降*/
-		if (abs(paw_err-paw_err_last)<100)//处理已经下降到底部，但还在下降的情况
+		if (abs(paw_err-paw_err_last)<50)//处理已经下降到底部，但还在下降的情况
 		{
 			same_dis_count = same_dis_count+1;
 			
-			if (same_dis_count>5)
+			if (same_dis_count>100)
 			{
 				PAW_DOWN(OFF);
 				start_down = 0;
@@ -472,11 +531,11 @@ void SelfCheckStatus(void)
 //	uint8_t count2=0;
 //	
 //  RelayOn();//打开遥控器
-//	RequestStart(BIG_CAR);//请求大车433发送数据
+//	RequestStart(Small_CAR);//请求小车433发送数据
 //	
 //	while ((laser.dis6<=0)||(laser.dis7<=0))//判断大行车数据是否正常
 //	{
-//		RequestStart(BIG_CAR); //请求大车433发送数据	
+//		RequestStart(Small_CAR); //请求小车433发送数据	
 //		
 //		count1++;
 //		if(count1>10)//请求次数大于10次还没有得到正确数据，可能是数据传输链路有问题，需要检查
@@ -494,10 +553,10 @@ void SelfCheckStatus(void)
 //		if((abs(laser.dis6-ORIGIN_X)<200)&&(abs(laser.dis7-ORIGIN_Y)<200))
 //		{
 //			//(x,y)坐标在初始位置，继续判断z轴数据是否在初始位置附近
-//			RequestStop(BIG_CAR); //请求大车433停止发送数据	
-//			RequestStart(BIG_CLAW); //请求大爪433发送数据	
+//			RequestStop(Small_CAR); //请求小车433停止发送数据	
+//			RequestStart(Small_CLAW); //请求小爪433发送数据	
 //			
-//			while (laser.dis1<=0)//判断大爪上传数据是否正常
+//			while (laser.dis1<=0)//判断小爪上传数据是否正常
 //			{
 //				count2++;
 //				if(count2>10)//请求次数大于10次还没有得到正确数据，可能是数据传输链路有问题，需要检查
@@ -506,14 +565,14 @@ void SelfCheckStatus(void)
 //				}
 //				for (uint8_t i = 0; i < 5; i++)
 //				{
-//					RequestStop(BIG_CAR); //请求大车433停止发送数据	
-//					RequestStart(BIG_CLAW); //请求大抓433发送数据	
+//					RequestStop(Small_CAR); //请求小车433停止发送数据	
+//					RequestStart(Small_CLAW); //请求小爪433发送数据	
 //				}			 
 //			}		
 //			if(abs(laser.dis1-ORIGIN_Z)<200)
 //			{
 //				/*不需要动*/
-//				RequestStop(BIG_CLAW); //请求大爪433停止发送数据	
+//				RequestStop(Small_CLAW); //请求小爪433停止发送数据	
 //			}
 //			else
 //			{
@@ -554,34 +613,48 @@ void SelfCheckStatus(void)
 //数据通讯管理
 void DataCommunicateManage(uint8_t task_mode,uint8_t OnorOff)
 {
+	float dis1_err = 0.0f;
+	float dis2_err = 0.0f;
+	float dis3_err = 0.0f;
+	
 	if(SMALL_CAR==task_mode)//请求小行车433
 	{	
 		if(1==OnorOff)
 		{
-			if ((laser.dis2<=0)||(laser.dis3<=0))//判断小行车数据是否正常
+			dis2_err = laser.dis2 - laser.last_dis2;
+			dis3_err = laser.dis3 - laser.last_dis3; 
+			
+			if ((dis2_err==0)&&(dis3_err==0))//判断小行车数据是否正常
 			{
 				SmallCarDataCorrect = 0;
-				RequestStart(SMALL_CAR);  //请求大车433发送数据	
+				RequestStart(SMALL_CAR);  //请求小车433发送数据	
 			}	
 			else
 				SmallCarDataCorrect = 1;	
+			
+			laser.last_dis2 = laser.dis2;    //保存历史值
+			laser.last_dis3 = laser.dis3;
 		}
 		else if(0==OnorOff)
 		{
 			RequestStop(SMALL_CAR);
 		}
 	}
-	else if(SMALL_CLAW==task_mode)//请求大爪433
+	else if(SMALL_CLAW==task_mode)//请求小爪433
 	{
 		if(1==OnorOff)
 		{
-			if (laser.dis1<=0)//判断小爪子数据是否正常
+			dis1_err = laser.dis1 - laser.last_dis1;
+			
+			if (dis1_err ==0.0f )//判断小爪子数据是否正常
 			{
 				SmallClawDataCorrect = 0;
 				RequestStart(SMALL_CLAW);  //请求小爪433发送数据	
 			}	
 			else
-				SmallClawDataCorrect = 1;			
+				SmallClawDataCorrect = 1;		
+			
+			laser.last_dis1 = laser.dis1;//保存历史值
 		}
 		else if(0==OnorOff)
 		{
@@ -589,88 +662,7 @@ void DataCommunicateManage(uint8_t task_mode,uint8_t OnorOff)
 		}
 	}
 }
-/*
-*****************************************************************************************************************
-*                                    void RevStop(float err)
-*
-*Description : 反向停止
-*Arguments   : float err：实际位置距目标位置偏差
-*Returns     : none
-*Notes       : none
-*****************************************************************************************************************
-*/
-void RevStop(float err)
-{
-	if(err>0)
-	{
-		//小行车向南反向制动	
-		if(ReverseStop == 0)
-		{
-			CAR_NORTH(OFF);
-			ReverseStop=1;	       				
-		}
-		else if(ReverseStop==1)
-		{
-			if(ReverseTime<=10)//1s开
-			{				
-				CAR_SOUTH(ON);				
-			}
-			else
-			{
-				ReverseStop++;
-				ReverseTime = 0;
-			}	
-		}
-		else if(ReverseStop==2)
-		{
-			if(ReverseTime<=2)//0.2s停
-			{				
-				CAR_SOUTH(OFF);				
-			}
-			else
-			{
-				ReverseStop--;
-				ReverseTime = 0;
-				ReverseCount++;
-			}					
-		}					
-	}
-	//小行车向北反向制动
-	else
-	{
-		//小行车反向停止
-		if(ReverseStop == 0)
-		{
-			CAR_SOUTH(OFF);
-			ReverseStop=1;	       				
-		}
-		else if(ReverseStop==1)
-		{
-			if(ReverseTime<=10)//1s开
-			{				
-				CAR_NORTH(ON);				
-			}
-			else
-			{
-				ReverseStop++;
-				ReverseTime = 0;
-			}	
-		}
-		else if(ReverseStop==2)
-		{
-			if(ReverseTime<=2)//0.2s停
-			{				
-				CAR_NORTH(OFF);				
-			}
-			else
-			{
-				ReverseStop--;
-				ReverseTime = 0;
-				ReverseCount++;
-			}					
-		}			
-	}
-}
+
 /*
 *****************************************************************************************************************
 *                                    void HorizontalDotMove(float err_x,float err_y)

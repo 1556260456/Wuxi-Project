@@ -8,7 +8,7 @@
 
 
 /************************************************************/
-#define alarm        PBout(12)      
+#define alarm        PDout(10)      
 
 #define ALARM_ON     (alarm=1)
 #define ALARM_OFF    (alarm=0)

@@ -43,35 +43,35 @@
 //#define RELAY_OFF_car_start     (PEout(9)=1)
 //#define RELAY_OFF_car_stop      (PEout(10)=1)
 
-#define CAR_EAST_PIN                    GPIO_Pin_12                 
-#define CAR_EAST_GPIO_PORT              GPIOB  
+#define CAR_EAST_PIN                    GPIO_Pin_8                 
+#define CAR_EAST_GPIO_PORT              GPIOE  
 
-#define CAR_WEST_PIN                    GPIO_Pin_13                 
-#define CAR_WEST_GPIO_PORT              GPIOB  
+#define CAR_WEST_PIN                    GPIO_Pin_9                 
+#define CAR_WEST_GPIO_PORT              GPIOE  
 
-#define CAR_SOUTH_PIN                   GPIO_Pin_14                 
-#define CAR_SOUTH_GPIO_PORT             GPIOB  
+#define CAR_SOUTH_PIN                   GPIO_Pin_10                 
+#define CAR_SOUTH_GPIO_PORT             GPIOE  
 
-#define CAR_NORTH_PIN                   GPIO_Pin_15                 
-#define CAR_NORTH_GPIO_PORT             GPIOB  
+#define CAR_NORTH_PIN                   GPIO_Pin_11                 
+#define CAR_NORTH_GPIO_PORT             GPIOE  
 
-#define PAW_UP_PIN                      GPIO_Pin_13                 
-#define PAW_UP_GPIO_PORT                GPIOD  
+#define PAW_UP_PIN                      GPIO_Pin_12               
+#define PAW_UP_GPIO_PORT                GPIOB  
 
-#define PAW_DOWN_PIN                    GPIO_Pin_14                 
-#define PAW_DOWN_GPIO_PORT              GPIOD  
+#define PAW_DOWN_PIN                    GPIO_Pin_13                 
+#define PAW_DOWN_GPIO_PORT              GPIOB  
+
+#define PAW_RELEASE_PIN                 GPIO_Pin_14                
+#define PAW_RELEASE_GPIO_PORT           GPIOB  
 
 #define PAW_CLOSE_PIN                   GPIO_Pin_15                 
-#define PAW_CLOSE_GPIO_PORT             GPIOD  
+#define PAW_CLOSE_GPIO_PORT             GPIOB 
 
-#define PAW_RELEASE_PIN                 GPIO_Pin_8                
-#define PAW_RELEASE_GPIO_PORT           GPIOE  
+#define CAR_START_PIN                   GPIO_Pin_8                 
+#define CAR_START_GPIO_PORT             GPIOD  
 
-#define CAR_START_PIN                   GPIO_Pin_9                 
-#define CAR_START_GPIO_PORT             GPIOE  
-
-#define CAR_STOP_PIN                    GPIO_Pin_10                
-#define CAR_STOP_GPIO_PORT              GPIOE  
+#define CAR_STOP_PIN                    GPIO_Pin_9                
+#define CAR_STOP_GPIO_PORT              GPIOD  
 
 #define ON      1
 #define OFF     0
@@ -126,9 +126,9 @@
 					else		\
 					GPIO_SetBits(CAR_STOP_GPIO_PORT,CAR_STOP_PIN)		
 
-extern int8_t RelayOnflag;
+extern int  RelayOnflag;
 
-extern int8_t RelayOffflag;
+extern int  RelayOffflag;
 					
 void Relay_GPIO_Init(void);
 void RelayOn(void);

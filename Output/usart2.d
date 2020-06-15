@@ -37,4 +37,5 @@
 ..\..\output\usart2.o: ..\..\Libraries\STM32F4xx_StdPeriph_Driver\inc\stm32f4xx_fsmc.h
 ..\..\output\usart2.o: ..\..\User\systick\bsp_SysTick.h
 ..\..\output\usart2.o: ..\..\User\led\bsp_led.h
+..\..\output\usart2.o: ..\..\User\LCFunc\LCFunc.h
 ..\..\output\usart2.o: ..\..\User\Data_type\Data_type.h

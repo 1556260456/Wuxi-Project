@@ -1,8 +1,4 @@
-/***************************************************************************
 
-所谓半自动，即在爪子抓完料上升到最高点和爪子水平移动到焚料池上方时请求确认
-
-****************************************************************************/
 #include "HalfAuto.h"
 #include "FullAuto.h"
 #include "LCFunc.h"
@@ -43,6 +39,7 @@ extern uint8_t Run_Mode;
 uint8_t HalfAutoStep = 0;
 uint8_t SingleStepOver = 0;//0:代表此步正在执行；1:代表在此步执行结束
 int8_t IsExecute = -1;//1:执行下一步,0：不执行下一步
+int8_t Origin_state =0;
 /*
 *****************************************************************************************************************
 *                                    void SmallCarHalfAutoMode(void)
@@ -83,14 +80,16 @@ void SmallCarHalfAutoMode(void)
 		}
 		Up_Data.Status = (Up_Data.Status&0xF0)|(0xF1);
 	}
-	else if(1==HalfAutoStep)        //确保小行车在初始状态
+	else if(1==HalfAutoStep)        
 	{
 		if(0==SingleStepOver)
 		{
+			Origin_state = 1;
 			BackToOriginState();		//确保小行车在初始状态
+			Origin_state = 0;
 			if(UP_BIT == 1)         //上升结束
 			{
-				#if RESTEP_1==0       //直接进行下一步
+				#if RESTEP_2==0       //直接进行下一步
 					HalfAutoStep++; 
 				#elif RESTEP_1==1     //表示此步执行结束
 					SingleStepOver=1;
@@ -117,9 +116,8 @@ void SmallCarHalfAutoMode(void)
 			HorizontalMoving(target.x[0],target.y[0]);
 			if((1==X_MOVE_BIT)&&(1==Y_MOVE_BIT))
 			{
-				#if RESTEP_1==0  //直接进行下一步
+				#if RESTEP_3==0  //直接进行下一步
 					HalfAutoStep++;
-				  UpOrDown = 0;//0代表上半部，1代表下半部,为下面下降程序做准备
 				#elif RESTEP_1==1 //表示此步执行结束
 					SingleStepOver=1;
 				#endif
@@ -135,7 +133,6 @@ void SmallCarHalfAutoMode(void)
 				Up_Data.HalfStep = 0;
 				HalfAutoStep++;
 				SingleStepOver=0;
-				UpOrDown = 0;//0代表上半部，1代表下半部,为下面下降程序做准备
 				IsExecute=0;
 			}			
 		}
@@ -147,7 +144,7 @@ void SmallCarHalfAutoMode(void)
 			DowntoLitterPool(target.z[0]);
 			if(1==DOWN_BIT)
 			{
-				#if RESTEP_1==0  //直接进行下一步
+				#if RESTEP_4==0  //直接进行下一步
 					HalfAutoStep++;
 				  CloseFlag=1;//将下面执行的抓料标志位置1
 				#elif RESTEP_1==1 //表示此步执行结束
@@ -176,9 +173,8 @@ void SmallCarHalfAutoMode(void)
 			HFClosePaw();
 			if(2==CloseFlag)
 			{
-				#if RESTEP_1==0  //直接进行下一步
+				#if RESTEP_5==0  //直接进行下一步
 					HalfAutoStep++;
-				  UpOrDown = 1;  //0代表上半部，1代表下半部,将爪子上抬标志位置1
 				#elif RESTEP_1==1 //表示此步执行结束
 					SingleStepOver=1;
 				#endif
@@ -193,7 +189,6 @@ void SmallCarHalfAutoMode(void)
 				Up_Data.HalfStep = 0;
 				HalfAutoStep++;
 				SingleStepOver=0;
-				UpOrDown = 1;  //0代表上半部，1代表下半部,将爪子上抬标志位置1
 				IsExecute=0;
 			}		
 		}
@@ -205,7 +200,7 @@ void SmallCarHalfAutoMode(void)
 			RisePawFromLitterPool();
 			if(1==UP_BIT)
 			{
-				#if RESTEP_1==0  //直接进行下一步
+				#if RESTEP_6==0  //直接进行下一步
 					HalfAutoStep++;
 				#elif RESTEP_1==1 //表示此步执行结束
 					SingleStepOver=1;
@@ -232,7 +227,7 @@ void SmallCarHalfAutoMode(void)
 			HorizontalMoving(target.x[1],target.y[1]);
 			if((1==X_MOVE_BIT)&&(1==Y_MOVE_BIT))
 			{
-				#if RESTEP_1==0  //直接进行下一步
+				#if RESTEP_7==0  //直接进行下一步
 					HalfAutoStep++;
 				#elif RESTEP_1==1 //表示此步执行结束
 					SingleStepOver=1;
@@ -260,7 +255,7 @@ void SmallCarHalfAutoMode(void)
 			DownPawToLitterPool(target.z[1]);
 			if(1==DOWN_BIT)
 			{
-				#if RESTEP_1==0  //直接进行下一步
+				#if RESTEP_8==0  //直接进行下一步
 					HalfAutoStep++;
 				  OpenFlag=1;    //将松开爪子标志位置1
 				#elif RESTEP_1==1 //表示此步执行结束
@@ -289,7 +284,7 @@ void SmallCarHalfAutoMode(void)
 			HFOpenPaw();
 			if(2==OpenFlag)
 			{
-				#if RESTEP_1==0  //直接进行下一步
+				#if RESTEP_9==0  //直接进行下一步
 					HalfAutoStep++;
 				#elif RESTEP_1==1 //表示此步执行结束
 					SingleStepOver=1;
@@ -316,7 +311,7 @@ void SmallCarHalfAutoMode(void)
 			UpPawFromLitterPool(ORIGIN_Z);
 			if(1==UP_BIT)
 			{
-				#if RESTEP_1==0  //直接进行下一步
+				#if RESTEP_10==0  //直接进行下一步
 					HalfAutoStep++;
 				#elif RESTEP_1==1 //表示此步执行结束
 					SingleStepOver=1;
@@ -343,7 +338,7 @@ void SmallCarHalfAutoMode(void)
 			HorizontalMoving(ORIGIN_X,ORIGIN_Y);
 			if((1==X_MOVE_BIT)&&(1==Y_MOVE_BIT))
 			{
-				#if RESTEP_1==0  //直接进行下一步
+				#if RESTEP_11==0  //直接进行下一步
 					HalfAutoStep++;
 				#elif RESTEP_1==1 //表示此步执行结束
 					SingleStepOver=1;
@@ -364,33 +359,6 @@ void SmallCarHalfAutoMode(void)
 			}
 		}
 	}
-//	else if(10==HalfAutoStep)//将爪子下降到四楼平台
-//	{
-//		if(0==SingleStepOver)
-//		{
-//			DownToOrigin(ORIGIN_Z);
-//			if(1==DOWN_BIT)
-//			{
-//				#if RESTEP_1==0  //直接进行下一步
-//					HalfAutoStep++;
-//				#elif RESTEP_1==1 //表示此步执行结束
-//					SingleStepOver=1;
-//				#endif
-//				DOWN_BIT=0;//标志位复位
-//			}		
-//		}
-//		else if(1==SingleStepOver)
-//		{
-//			ConfirmNextStep(HalfAutoStep+1);
-//			if(1==IsExecute)//经上位机确定执行下一步
-//			{
-//				Up_Data.HalfStep = 0;
-//				HalfAutoStep++;
-//				SingleStepOver=0;
-//				IsExecute=0;
-//			}
-//		}
-//	}
 	else if(10==HalfAutoStep)//断开电源,运行结束
 	{
 		PowerOff();

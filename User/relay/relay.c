@@ -1,8 +1,7 @@
 #include "relay.h"
 
-int8_t RelayOnflag = -1;
-
-int8_t RelayOffflag = -1;
+int  RelayOnflag = -1;
+int  RelayOffflag = -1;
 
 void Relay_GPIO_Init(void)
 {		
@@ -15,50 +14,68 @@ void Relay_GPIO_Init(void)
 		GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12|GPIO_Pin_13|GPIO_Pin_14|GPIO_Pin_15;	
 		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;   
     GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
 		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz; 
 		GPIO_Init(GPIOB, &GPIO_InitStructure);	
 	
-		GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13|GPIO_Pin_14|GPIO_Pin_15;	
-		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;   
-    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz; 
-		GPIO_Init(GPIOD, &GPIO_InitStructure);	
-
 		GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10;	
 		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;   
     GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz; 
+		GPIO_Init(GPIOD, &GPIO_InitStructure);	
+
+		GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_10|GPIO_Pin_11;	
+		GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;   
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
 		GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz; 
 		GPIO_Init(GPIOE, &GPIO_InitStructure);	  
+		
+		CAR_EAST(OFF);
+		CAR_WEST(OFF);
+		CAR_SOUTH(OFF);
+		CAR_NORTH(OFF);
+		PAW_UP(OFF);
+		PAW_DOWN(OFF);
+		PAW_CLOSE(OFF);
+		PAW_RELEASE(OFF);
+		CAR_START(OFF);
+		CAR_STOP(OFF);
+		GPIO_SetBits(GPIOD,GPIO_Pin_10);
 		
 }
 //打开遥控器
 void RelayOn(void)
 {
-	if(RelayOnflag>=0 && RelayOnflag <=10)
+	if(RelayOnflag>=0 && RelayOnflag <=25)
 	{
 		CAR_START(ON);
 	}
+	else if(RelayOnflag>=25 && RelayOnflag <=50)
+	{		
+		CAR_START(OFF); 
+	}	
 	else
 	{
 		RelayOnflag = -2;
-		CAR_START(OFF); 
 	}	
 	 
 }
 //关闭遥控器
 void RelayOff(void)
 {
-	if(RelayOffflag>=0 && RelayOffflag <=10)
+	if(RelayOffflag>=0 && RelayOffflag <=25)
 	{
 		CAR_STOP(ON);
 	}
+	else if(RelayOffflag>=25 && RelayOffflag <=50)
+	{		
+		CAR_STOP(OFF);
+	}	 
 	else
 	{
 		RelayOffflag = -2;
-		CAR_STOP(OFF);
 	}	  
 }
 //上电

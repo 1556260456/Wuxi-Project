@@ -64,29 +64,49 @@ int main(void)
 {	
 	//uint8_t Choice = 0;
 	SysTick_Init();                 //系统时钟初始化
-  BSP_Init();                     //相关硬件初始化 
-	
-	while((0==SmallClawDataCorrect)||(0==SmallCarDataCorrect))
-	{
+  BSP_Init();  	//相关硬件初始化 
+	laser.last_dis1 = laser.dis1;
+	laser.last_dis2 = laser.dis2;
+	laser.last_dis3 = laser.dis3; 
+//	while((0==SmallCarDataCorrect))
+//	{
+//		DataCommunicateManage(SMALL_CAR,1);//请求数据
+//		delay_ms(1000);
+//	
+//	}
+	while((0==SmallClawDataCorrect))
+	{ 
 		DataCommunicateManage(SMALL_CLAW,1);//请求数据
-		DataCommunicateManage(SMALL_CAR,1);//请求数据
+		delay_ms(1000);
 	}
-	Up_Data.Status = Up_Data.Status|0x80;	//初始状态设为正常状态，最高位置1
+	Up_Data.Status = Up_Data.Status|0xF0;	//初始状态设为正常状态，最高位置1
 	
 	//初始值
-//	target.x[0] = 13000;
+//	target.x[0] = 3000;
 //	target.y[0] = 4000; 
-//	target.z[0] = 1600; 
-//	origin.x[0] = 7900; 
+//	target.z[0] = 1000; 
+//	target.x[1] = 5000;
+//	target.y[1] = 6000; 
+//	target.z[1] = 7000; 
+//	
+//	origin.x[0] = 3500; 
 //	origin.y[0] = 4000; 
-//	origin.z[0] = 1700;  
+//	origin.z[0] = 7000;  
+	
+
 
   //SelfCheckStatus();//开机启动自检程序
+//	WaitFlag = 2;
+//	Run_Mode = 1;
+//	HTaskModeFlag = 3;
 	
+	TIM_Cmd(TIM7,ENABLE); 
+
 	while(1) 
   { 
 		if(task_tim.time_10ms >= 20)//运行任务每次10ms
 		{
+			task_tim.time_10ms -= 20;
 			if(1 == WaitFlag)//已收到上位机传来数据
 			{				
 				//ChoseTask(Choice);
@@ -106,22 +126,29 @@ int main(void)
 					switch(HTaskModeFlag)
 					{
 						case 1: //X
-							ManualXMoving(target.x[0]);
+							ManualXMoving(target.x[1]);
 							break;
 						case 2: //Y
-							ManualYMoving(target.y[0]);
+							ManualYMoving(target.y[1]);
 							break;
 						case 3: //从垃圾池上升
-							
+							ManualRaisePawFromLitterPool(target.z[1]);
 							break;				
-						case 4: //下降到垃圾池
-							
-						case 5: //抓料
+						case 6: //下降到垃圾池
+							ManualDowntoLitterPool(target.z[1]);
+							break;
+						case 9: //抓料
 							ManualClose();
 							break;	
-						case 6:  //放料
+						case 10:  //放料
 							ManualOpen();
-							break;							
+							break;	
+						case 7: //打开遥控器
+							ManualPowerOn();
+							break;
+						case 8:   //关闭遥控器
+							ManualPowerOff();
+							break;
 						default:
 							break;
 					}			
@@ -137,20 +164,21 @@ int main(void)
 			}
 		}
 		
-		if(task_tim.time_100ms >= 200)//100ms发送
+		if(task_tim.time_200ms >= 400)//100ms发送
 		{
+
 			if(1==Up_Data_Flag)
 			{
 				RS485_Send_Data();//100ms上传一次数据		
 				Up_Data_Flag=0;				
 			}
 			//出错报警
-			if(!ErrorSmallCar)
+			if((ErrorSmallCar)||(ManualError==1))
 			{
 				ALARM_ON;
 			}
 		}
-	}	 
+	}
 }
 
 void BSP_Init(void)
@@ -160,12 +188,10 @@ void BSP_Init(void)
 	ADC_DMA_Init();                 //ADC_DMA初始化
 	Alarm_GPIO_Init();              //报警端口初始化
 	Relay_GPIO_Init();              //继电器端口初始化
-	EXTI10_Init();                  //外部中断初始化(用于紧急停止按钮 )
+	EXTIX_Init();                  //外部中断初始化(用于紧急停止按钮 )
 	USART1_Init(115200);            //USART1初始化(接收传感器的433)
 	USART2_Init(115200);            //USART2初始化(与电脑端通信的433)
 	RS485_Init(115200);             //RS485初始化
-	//UART4_Init(115200);	            //UART4初始化(用于调试用)
+	UART4_Init(115200);	            //UART4初始化(用于调试用)
 	TIM7_Init(500-1,84-1);          //f=2kHZ,T=0.5ms 
 }
-
-
