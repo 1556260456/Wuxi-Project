@@ -87,7 +87,11 @@ void SmallCarHalfAutoMode(void)
 		if(0==SingleStepOver)
 		{
 			Origin_state = 1;
+<<<<<<< HEAD
 			BackToOriginState();		//是否需要确保小行车在初始状态、或者只是确保小行车爪子提起即可
+=======
+			BackToOriginState();		//确保小行车在初始状态
+>>>>>>> f02ed4fcf33be44e9cc1f4e11d06fb0a95e09135
 			Origin_state = 0;
 			if(UP_BIT == 1)         //上升结束
 			{
@@ -366,7 +370,11 @@ void SmallCarHalfAutoMode(void)
 			}
 		}
 	}
+<<<<<<< HEAD
 	else if(11==HalfAutoStep)//断开电源,运行结束
+=======
+	else if(10==HalfAutoStep)//断开电源,运行结束
+>>>>>>> f02ed4fcf33be44e9cc1f4e11d06fb0a95e09135
 	{
 		PowerOff();
 		if(RelayOffflag==-2)

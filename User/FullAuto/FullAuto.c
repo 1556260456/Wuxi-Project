@@ -58,7 +58,10 @@ void SmallCarFullAutoMode(void)
 			FullAutoStep++;//进行下一步
 			X_MOVE_BIT=0;//标志位复位
 			Y_MOVE_BIT=0;//标志位复位
+<<<<<<< HEAD
 			mpu.dis = test_distance;// 仅供全自动测试使用
+=======
+>>>>>>> f02ed4fcf33be44e9cc1f4e11d06fb0a95e09135
 		}
 	}
 	else if(3==FullAutoStep)//爪子开始下降去抓料
@@ -78,7 +81,10 @@ void SmallCarFullAutoMode(void)
 		{
 			FullAutoStep++;//进行下一步
 			CloseFlag = 0; //标志位复位
+<<<<<<< HEAD
 			mpu.dis = test_distance;// 仅供全自动测试使用
+=======
+>>>>>>> f02ed4fcf33be44e9cc1f4e11d06fb0a95e09135
 		}
 	}
 	else if(5==FullAutoStep)//执行小爪上升动作

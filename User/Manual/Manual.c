@@ -162,6 +162,12 @@ void ManualOpen(void)
 */
 void ManualRaisePawFromLitterPool(float z)
 {
+<<<<<<< HEAD
+=======
+	//------------------------------------------------------------
+	//PowerOn();//行车上电
+  //------------------------------------------------------------
+>>>>>>> f02ed4fcf33be44e9cc1f4e11d06fb0a95e09135
 	
 	if( (1==SmallClawDataCorrect) && (RelayOnflag == -2) )//数据正常
 	{

@@ -236,6 +236,7 @@ void USARTx_IRQHandler(void)
 					}
 					if(u2_receive_buff[13] == sum1)
 					{
+<<<<<<< HEAD
 						//mpu.dis  = 4000;
 						//mpu.dis  = ((int)(u2_receive_buff[3]<<24 | u2_receive_buff[2]<<16 | u2_receive_buff[1]<<8))/256;
 						mpu.angle_x   = ((short)((u2_receive_buff[5]<<8) | (u2_receive_buff[4]) ))/100.0;
@@ -247,6 +248,18 @@ void USARTx_IRQHandler(void)
 						Up_Data.P_z = mpu.dis;
 						Up_Data.A_x = mpu.angle_x;
 						Up_Data.A_y = mpu.angle_y;
+=======
+						mpu.dis  = ((int)(u2_receive_buff[3]<<24 | u2_receive_buff[2]<<16 | u2_receive_buff[1]<<8))/256;
+						mpu.angle_x   = ((short)u2_receive_buff[5]<<8 | u2_receive_buff[4] )/100.0;
+						mpu.angle_y   = ((short)u2_receive_buff[7]<<8 | u2_receive_buff[6] )/100.0;
+						mpu.angle_z   = ((short)u2_receive_buff[9]<<8 | u2_receive_buff[8] )/100.0; 
+						laser.sampleval1 = (u2_receive_buff[11]<<8|u2_receive_buff[10]);
+						laser.dis1       =  5.0f*((laser.sampleval1*3300.0f)/4096.0f)-3000.0f;   //об
+						Up_Data.P_z = (int)laser.dis1;
+						//Up_Data.P_z = mpu.dis;
+						Up_Data.A_x = (int16_t)mpu.angle_x;
+						Up_Data.A_y = (int16_t)mpu.angle_x;
+>>>>>>> f02ed4fcf33be44e9cc1f4e11d06fb0a95e09135
 					}
 					sum1=0;					
 				}

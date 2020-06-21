@@ -326,7 +326,11 @@ void YMoving(float y)
 *****************************************************************************************************************
 *                                     void UpPawFromLitterPool(float z)
 *
+<<<<<<< HEAD
 *Description : 爪子上升程序--从料坑上升  
+=======
+*Description : 爪子上升程序（从料坑池上升）  
+>>>>>>> f02ed4fcf33be44e9cc1f4e11d06fb0a95e09135
 *Arguments   : float z：所期望的激光位置
 *Returns     : none
 *Notes       : 往下射的激光laser.dis1,依据down_time,down_distance 来确定上升高度
@@ -336,6 +340,7 @@ void YMoving(float y)
 void UpPawFromLitterPool(float z)
 {
 	float paw_err = 0; 
+<<<<<<< HEAD
 	float uwb_dis_err = 0;
 	static float paw_err_last = 0;
 	static int same_dis_count = 0;
@@ -394,6 +399,104 @@ void UpPawFromLitterPool(float z)
 			UP_BIT = 2;
 		}
 	}
+=======
+	static float paw_err_last = 0;
+	static int same_dis_count = 0;
+	static uint8_t dis1_err_count = 0;
+	//测试参数
+//	down_distance = 6500;
+//	down_time = 300;
+
+	if (laser.dis1<0)//滤除偶尔出现的错误值
+	{
+		if(dis1_err_count<10)
+		{
+			dis1_err_count++;
+			laser.dis1=laser.last_dis1;
+		}
+		else
+		{
+			PAW_UP(OFF);
+			dis1_err_count = 0;
+			UP_BIT = 2;
+		}
+	}
+
+	paw_err = z-laser.dis1;  
+	laser.last_dis1 = laser.dis1;   
+	
+	
+	if(laser.dis1>0 && laser.dis1<9000)    //爪子正常上升，实际距离和期望距离小于0.1米时停止
+	{ 
+		if(abs(paw_err)>=300)
+		{
+			PAW_UP(ON);
+			Up_Data.Status = (Up_Data.Status&0x87)|0x28;//此时的状态值 up
+			start_up = 1;
+		}
+		else 
+		{
+			PAW_UP(OFF);
+			UP_BIT=1;
+			start_up = 0;
+		}
+	}
+//	if(mpu.dis<=3000)    //           情况1：uwb数据显示高度已经足够
+//	{
+//		PAW_UP(OFF);
+//		UP_BIT = 1;//上升完成标志位置1
+//		start_up = 0;
+//		down_time =1;
+//		up_time = 2;
+//	}
+	if( (Origin_state==0) && (Run_Mode>1) )  //  情况2： 在手动模式是否需要此功能
+	{
+		if(up_time>=down_time)   //当小爪上升时间与下降时间成某一比例时，停止
+		{
+			PAW_UP(OFF);
+			start_up = 0;
+			down_time =1;
+			up_time = 2;
+			UP_BIT =1;
+		}
+		up_distance = laser.dis1;
+		if(up_distance>=down_distance)  //当小爪上升时高度与上一次下降前高度相等，停止
+		{
+			PAW_UP(OFF);
+			start_up = 0;
+			down_time =1;
+			up_time = 2;
+			UP_BIT = 1;
+		}
+	}
+//	if((mpu.angle_x>=25.0f) || mpu.angle_y>=25.0f)   //情况3：当爪机倾斜角度较大时，停止运动
+//	{
+//		PAW_UP(OFF);
+//		start_up = 0;
+//		down_time =1;
+//		up_time = 2;
+//		UP_BIT = 1;
+//	}
+	
+//	if(abs(paw_err-paw_err_last)<50)    ///情况4：    处理已经上升到限位的情况   此处的距离和累计次数需要微调
+//	{
+//		same_dis_count = same_dis_count+1;
+//		if (same_dis_count>100)
+//		{
+//			PAW_UP(OFF);
+//			start_up = 0;
+//			down_time =1;
+//			up_time = 2;
+//			same_dis_count=0;			
+//			UP_BIT = 1;
+//		}	
+//	}
+	else
+	{
+		same_dis_count=0;
+	}	
+	paw_err_last=paw_err;	
+>>>>>>> f02ed4fcf33be44e9cc1f4e11d06fb0a95e09135
 }
 //			if (laser.dis1<0)//滤除偶尔出现的错误值
 //			{
@@ -497,8 +600,11 @@ void DownPawToLitterPool(float z)
 	*/
 	
 	float paw_err=0; 
+<<<<<<< HEAD
 	float uwb_dis_err = 0;
 	static uint8_t  Dis1ErrCount=0;
+=======
+>>>>>>> f02ed4fcf33be44e9cc1f4e11d06fb0a95e09135
 	static float paw_err_last=0;
 	static uint8_t same_dis_count=0;
 	
@@ -509,7 +615,15 @@ void DownPawToLitterPool(float z)
 		if(mpu.dis>0 && mpu.dis<9000 && uwb_dis_err>300)//使用uwb数据，且误差较大，此时下降
 		{
 			PAW_DOWN(ON);
+<<<<<<< HEAD
 			Up_Data.Status = (Up_Data.Status&0x87)|0x30;//此时的状态值 down
+=======
+			if(start_down==0)
+			{
+				down_distance = laser.dis1;
+			}
+			start_down = 1;
+>>>>>>> f02ed4fcf33be44e9cc1f4e11d06fb0a95e09135
 		}
 		else if(mpu.dis>0 && mpu.dis<9000 && uwb_dis_err<300)//使用uwb数据，且误差较小，此时停止下降
 		{
@@ -519,6 +633,7 @@ void DownPawToLitterPool(float z)
 		else 
 		{
 			PAW_DOWN(OFF);
+<<<<<<< HEAD
 			DOWN_BIT = 2;		
 		}
 	}
@@ -532,12 +647,41 @@ void DownPawToLitterPool(float z)
 			Up_Data.Status = (Up_Data.Status&0x87)|0x30;//此时的状态值 down
 		}
 		else
+=======
+			start_down = 0;
+			PointMove = 0;
+			PointMoveTime = 0;	
+			DOWN_BIT = 1;
+		}
+		/*情况2：在点动时爪子倾斜过大*/
+		if ((abs(mpu.angle_x)>25.0f)||(abs(mpu.angle_y)>25.0f))//爪子倾斜超过一定角度，停止下降，跳出循环
+>>>>>>> f02ed4fcf33be44e9cc1f4e11d06fb0a95e09135
 		{
 			PAW_DOWN(OFF);
 			start_down = 0;
 			PointMove = 0;
 			PointMoveTime = 0;	
 			DOWN_BIT = 1;
+<<<<<<< HEAD
+=======
+		} 	
+		/*情况3：爪子无法下降，但是绳索仍然下降*/
+		if (abs(paw_err-paw_err_last)<50)//处理已经下降到底部，但还在下降的情况
+		{
+			same_dis_count = same_dis_count+1;
+			
+			if (same_dis_count>100)
+			{
+				PAW_DOWN(OFF);
+				start_down = 0;
+				same_dis_count=0;
+				
+				PointMove = 0;
+				PointMoveTime = 0;
+				same_dis_count=0;				
+				DOWN_BIT = 1;
+			}	
+>>>>>>> f02ed4fcf33be44e9cc1f4e11d06fb0a95e09135
 		}
 //		else if(mpu.dis>0 && uwb_dis_err<=2000 )//使用uwb数据，且误差较小，此时使用激光数据并且点动
 //		{
@@ -723,7 +867,11 @@ void DataCommunicateManage(uint8_t task_mode,uint8_t OnorOff)
 			dis2_err = laser.dis2 - laser.last_dis2;
 			dis3_err = laser.dis3 - laser.last_dis3; 
 			
+<<<<<<< HEAD
 			if ((dis2_err==0)&&(dis3_err==0))//判断小行车数据是否正常  两个激光加UWB
+=======
+			if ((dis2_err==0)&&(dis3_err==0))//判断小行车数据是否正常
+>>>>>>> f02ed4fcf33be44e9cc1f4e11d06fb0a95e09135
 			{
 				SmallCarDataCorrect = 0;
 				RequestStart(SMALL_CAR);  //请求小车433发送数据	
