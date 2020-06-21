@@ -13,6 +13,7 @@
 
 extern uint8_t WaitFlag;
 extern uint8_t Run_Mode;
+extern int test_distance;
 
 extern POSITION origin;//起始位置
 extern POSITION target;//目标位置 
@@ -36,6 +37,7 @@ void SmallCarFullAutoMode(void)
 		{
 			FullAutoStep++;//进行下一步
 			RelayOnflag=-1;//标志位复位
+			mpu.dis = test_distance;// 仅供全自动测试使用
 		}
 		//Up_Data.Status = (Up_Data.Status&0xF0)|(0xF1);	
 	}
@@ -56,7 +58,7 @@ void SmallCarFullAutoMode(void)
 			FullAutoStep++;//进行下一步
 			X_MOVE_BIT=0;//标志位复位
 			Y_MOVE_BIT=0;//标志位复位
-			UpOrDown = 0;//0代表上半部，1代表下半部,为下面下降程序做准备
+			mpu.dis = test_distance;// 仅供全自动测试使用
 		}
 	}
 	else if(3==FullAutoStep)//爪子开始下降去抓料
@@ -72,11 +74,11 @@ void SmallCarFullAutoMode(void)
 	else if(4==FullAutoStep)//执行抓料动作
 	{
 		HFClosePaw();
-		if(2==CloseFlag)
+		if(-2==CloseFlag)
 		{
 			FullAutoStep++;//进行下一步
 			CloseFlag = 0; //标志位复位
-			UpOrDown = 1;  //0代表上半部，1代表下半部,将爪子上抬标志位置1
+			mpu.dis = test_distance;// 仅供全自动测试使用
 		}
 	}
 	else if(5==FullAutoStep)//执行小爪上升动作
@@ -96,6 +98,7 @@ void SmallCarFullAutoMode(void)
 			FullAutoStep++;//进行下一步
 			X_MOVE_BIT=0;  //标志位复位
 			Y_MOVE_BIT=0;  //标志位复位
+			mpu.dis = test_distance;// 仅供全自动测试使用
 		}
 	}
 	else if(7==FullAutoStep)//下放小爪子靠近垃圾池
@@ -108,16 +111,17 @@ void SmallCarFullAutoMode(void)
 			OpenFlag=1;    //将松开爪子标志位置1
 		}
 	}
-	else if(7==FullAutoStep)//松开爪子放料
+	else if(8==FullAutoStep)//松开爪子放料
 	{
 		HFOpenPaw();
-		if(2==OpenFlag)
+		if(-2==OpenFlag)
 		{
 			FullAutoStep++;//进行下一步
 			OpenFlag=0;    //标志位复位	
+			mpu.dis = test_distance;// 仅供全自动测试使用
 		}
 	}
-	else if(8==FullAutoStep)//提升爪子至安全高度
+	else if(9==FullAutoStep)//提升爪子至安全高度
 	{
 		RisePawFromLitterPool();
 		if(1==UP_BIT)
@@ -126,7 +130,7 @@ void SmallCarFullAutoMode(void)
 			UP_BIT = 0;
 		}
 	}
-	else if(9==FullAutoStep)//水平移动到初始位置上方
+	else if(10==FullAutoStep)//水平移动到初始位置上方
 	{
 		HorizontalMoving(ORIGIN_X,ORIGIN_Y);
 		if((1==X_MOVE_BIT)&&(1==Y_MOVE_BIT))
@@ -136,7 +140,7 @@ void SmallCarFullAutoMode(void)
 			Y_MOVE_BIT=0;//标志位复位
 		}
 	}
-	else if(10==FullAutoStep)//断开电源,运行结束
+	else if(11==FullAutoStep)//断开电源,运行结束
 	{
 		PowerOff();
 		if(RelayOffflag==-2)
@@ -213,7 +217,6 @@ void DowntoLitterPool(float z)
 	{
 		if(DOWN_BIT == 0)
 		{
-			//printf("down:acc_z=%f,gyro_z=%f,angle_x=%f,angle_y=%f,angle_z=%f,dis=%f\r\n",mpu.acc_z,mpu.gyro_z,mpu.angle_x,mpu.angle_y,mpu.angle_z,laser.dis1);
 		  DownPawToLitterPool(z);		
 		}
 		else if(DOWN_BIT == 1)
@@ -252,7 +255,6 @@ void RisePawFromLitterPool(void)
 	{
 		if(UP_BIT == 0)
 		{
-			//printf("down:acc_z=%f,gyro_z=%f,angle_x=%f,angle_y=%f,angle_z=%f,dis=%f\r\n",mpu.acc_z,mpu.gyro_z,mpu.angle_x,mpu.angle_y,mpu.angle_z,laser.dis1);
 		  UpPawFromLitterPool(ORIGIN_Z);		
 		}
 		else if(UP_BIT == 1)
@@ -276,17 +278,17 @@ void BackToOriginState(void)
 {
 	if((1==SmallClawDataCorrect) && (1==SmallCarDataCorrect))//数据正常
 	{
-		if( (laser.dis1<=ORIGIN_Z) && (UP_BIT==0))
+		if( (mpu.dis>ORIGIN_Z) && (UP_BIT==0))
 		{
 			UpPawFromLitterPool(ORIGIN_Z);
 		}
-		if((X_MOVE_BIT == 0) && (Y_MOVE_BIT == 0))
-		{
-			if((laser.dis2<1300) || (laser.dis2>1700))
-			{
-				HorizontalMoving(ORIGIN_X,ORIGIN_Y);
-			}
-		}
+//		if((X_MOVE_BIT == 0) && (Y_MOVE_BIT == 0))
+//		{
+//			if((laser.dis2<1300) || (laser.dis2>1700))
+//			{
+//				HorizontalMoving(ORIGIN_X,ORIGIN_Y);
+//			}
+//		}
 	}
 }
 

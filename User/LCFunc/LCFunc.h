@@ -20,9 +20,9 @@
 
 #define ORIGIN_X            1500     //小爪子初始X位置
 #define ORIGIN_Y            2500     //小爪子初始Y位置
-#define ORIGIN_Z            5000     //小爪子初始Z位置
+#define ORIGIN_Z            500     //小爪子初始Z位置
 
-#define abs(x)  ((x<0)?(-x):x)       //求x的绝对值
+#define abs(x)  ((x<0)?-(x):x)       //求x的绝对值
 
 extern uint8_t X_MOVE_BIT;            //行车及爪子移动标志位
 extern uint8_t Y_MOVE_BIT;
@@ -37,14 +37,13 @@ extern uint8_t ReverseStop;
 extern int ReverseTime;
 extern uint8_t PointMove;
 extern int PointMoveTime;
-extern uint8_t UpOrDown;
 extern uint8_t ErrorSmallCar;
 //1：表示合拢
-extern uint8_t CloseFlag;
+extern short int CloseFlag;
 //合拢延时
 extern int     CloseDelay;
 //1:表示打开
-extern uint8_t OpenFlag;
+extern short int OpenFlag;
 //打开延时
 extern int     OpenDelay;
 

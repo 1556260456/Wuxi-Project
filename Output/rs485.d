@@ -39,3 +39,4 @@
 ..\..\output\rs485.o: ..\..\User\GPIO\GPIO.h
 ..\..\output\rs485.o: ..\..\User\CRC\CRC.h
 ..\..\output\rs485.o: ..\..\User\Data_type\Data_type.h
+..\..\output\rs485.o: ..\..\User\systick\bsp_SysTick.h

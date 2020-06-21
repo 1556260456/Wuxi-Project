@@ -37,5 +37,10 @@
 ..\..\output\usart3.o: ..\..\Libraries\STM32F4xx_StdPeriph_Driver\inc\stm32f4xx_fsmc.h
 ..\..\output\usart3.o: ..\..\User\Data_type\Data_type.h
 ..\..\output\usart3.o: ..\..\User\Manual\Manual.h
+..\..\output\usart3.o: ..\..\User\LCFunc\LCFunc.h
+..\..\output\usart3.o: ..\..\User\relay\relay.h
+..\..\output\usart3.o: ..\..\User\systick\bsp_SysTick.h
 ..\..\output\usart3.o: ..\..\User\RS485\RS485.h
+..\..\output\usart3.o: ..\..\User\GPIO\GPIO.h
 ..\..\output\usart3.o: ..\..\User\CRC\CRC.h
+..\..\output\usart3.o: ..\..\User\led\bsp_led.h

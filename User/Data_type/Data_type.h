@@ -30,8 +30,7 @@ extern Laser laser;
 
 //mpu6050
 typedef struct{
-	float acc_z;
-	float gyro_z;
+	float dis;
 	float angle_x;
 	float angle_y;
 	float angle_z;
@@ -44,6 +43,7 @@ typedef struct{
     int x[2];
     int y[2];
     int z[2];
+		int uwbdis[2];
 }POSITION; 
 extern POSITION origin;//起始位置
 extern POSITION target;//目标位置 
@@ -69,6 +69,7 @@ typedef struct
 	u16 time_10ms; 														//
 	u16	time_25ms;	                          //
 	u16 time_100ms;                           //
+	u16 time_200ms;                           //
 	u16 time_1000ms;                          //
 } Task_loop_t;
 extern Task_loop_t task_tim;
